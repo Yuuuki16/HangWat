@@ -59,6 +59,13 @@ docker compose up --build
 - Backend health check: http://localhost:4000/health
 - PostgreSQL: localhost:5440
 
+backend と frontend のイメージを個別にビルドする場合も、build context は repository root にします。
+
+```bash
+docker build -f backend/Dockerfile -t hangwat-backend .
+docker build --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000 -f front/Dockerfile -t hangwat-front .
+```
+
 停止します。
 
 ```bash
