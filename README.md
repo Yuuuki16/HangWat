@@ -2,7 +2,7 @@
 
 ## Tech Stack
 
-- Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS
+- Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS v4
 - Backend: Hono, TypeScript, Prisma
 - Database: PostgreSQL
 - Package manager: pnpm workspace
@@ -28,8 +28,8 @@
 | --- | --- | --- |
 | `POSTGRES_USER` | PostgreSQL user | `postgres` |
 | `POSTGRES_PASSWORD` | PostgreSQL password | `postgres` |
-| `POSTGRES_DB` | PostgreSQL database name | `react_develop` |
-| `DATABASE_URL` | Local backend database URL. Docker Compose backend uses `db:5432` internally. | `postgresql://postgres:postgres@localhost:5440/react_develop` |
+| `POSTGRES_DB` | PostgreSQL database name | `hangwat_dev` |
+| `DATABASE_URL` | Local backend database URL. Docker Compose backend uses `db:5432` internally. | `postgresql://postgres:postgres@localhost:5440/hangwat_dev` |
 | `BACKEND_PORT` | Backend port exposed by Docker Compose | `4000` |
 | `FRONTEND_ORIGIN` | Origin allowed by backend CORS | `http://localhost:3000` |
 | `NEXT_PUBLIC_API_URL` | Frontend API base URL | `http://localhost:4000` |

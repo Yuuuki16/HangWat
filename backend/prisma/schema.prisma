@@ -14,4 +14,6 @@ model Task {
   completed   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([createdAt(sort: Desc)], map: "Task_createdAt_desc_idx")
 }

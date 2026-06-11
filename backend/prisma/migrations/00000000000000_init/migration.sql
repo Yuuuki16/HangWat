@@ -8,3 +8,5 @@ CREATE TABLE "Task" (
 
     CONSTRAINT "Task_pkey" PRIMARY KEY ("id")
 );
+
+CREATE INDEX "Task_createdAt_desc_idx" ON "Task"("createdAt" DESC);

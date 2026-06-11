@@ -9,6 +9,9 @@
 - [ ] `pnpm build`
 - [ ] `pnpm lint`
 - [ ] `pnpm test`
+- [ ] `docker compose build`
+- [ ] `docker compose up -d` で起動確認
+- [ ] `http://localhost:4000/health` および `http://localhost:3000` で疎通確認
 
 ## 影響範囲
 
