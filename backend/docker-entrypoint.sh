@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
 
-pnpm --filter backend prisma migrate deploy
+node backend/node_modules/prisma/build/index.js migrate deploy --schema backend/prisma/schema.prisma
 
 exec "$@"

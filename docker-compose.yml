@@ -28,7 +28,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["pnpm", "--filter", "backend", "start"]
+    command: ["node", "backend/dist/index.js"]
 
   front:
     build:
