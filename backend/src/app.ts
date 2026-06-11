@@ -19,6 +19,11 @@ export function createApp() {
     }),
   );
 
+  app.onError((error, c) => {
+    console.error(error);
+    return c.json({ error: "internal server error" }, 500);
+  });
+
   const taskRepository = new PrismaTaskRepository(prisma);
   const healthRepository = new PrismaHealthRepository(prisma);
   const taskService = new TaskService(taskRepository);

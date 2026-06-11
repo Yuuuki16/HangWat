@@ -12,7 +12,14 @@ export function createTaskRoutes(taskService: TaskService) {
   });
 
   app.post("/tasks", async (c) => {
-    const body = await c.req.json<unknown>();
+    let body: unknown;
+
+    try {
+      body = await c.req.json<unknown>();
+    } catch {
+      return c.json({ error: "invalid json" }, 400);
+    }
+
     const parseResult = parseCreateTaskBody(body);
 
     if (!parseResult.ok) {

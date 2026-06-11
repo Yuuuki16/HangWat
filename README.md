@@ -1,6 +1,18 @@
 # HangWat
 
-develop作成差分用にコメント
+## Tech Stack
+
+- Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS
+- Backend: Hono, TypeScript, Prisma
+- Database: PostgreSQL
+- Package manager: pnpm workspace
+- Local environment: Docker Compose
+
+## Requirements
+
+- Node.js 22
+- pnpm 10
+- Docker / Docker Compose
 
 ## Development Rules
 
@@ -8,9 +20,27 @@ develop作成差分用にコメント
 
 - [Development Guide](./docs/development/README.md)
 
+## Environment Variables
+
+環境変数サンプルは用途ごとに分けています。
+
+| Name | Description | Default |
+| --- | --- | --- |
+| `POSTGRES_USER` | PostgreSQL user | `postgres` |
+| `POSTGRES_PASSWORD` | PostgreSQL password | `postgres` |
+| `POSTGRES_DB` | PostgreSQL database name | `react_develop` |
+| `DATABASE_URL` | Local backend database URL. Docker Compose backend uses `db:5432` internally. | `postgresql://postgres:postgres@localhost:5440/react_develop` |
+| `BACKEND_PORT` | Backend port exposed by Docker Compose | `4000` |
+| `FRONTEND_ORIGIN` | Origin allowed by backend CORS | `http://localhost:3000` |
+| `NEXT_PUBLIC_API_URL` | Frontend API base URL | `http://localhost:4000` |
+
+- `.env.example`: Docker Compose 用
+- `backend/.env.example`: backend 単体起動 / backend デプロイ用
+- `front/.env.example`: frontend 単体起動 / frontend デプロイ用
+
 ## Docker
 
-初回は必要に応じて環境変数サンプルをコピーします。
+Docker Compose で全サービスをまとめて起動する場合は、必要に応じて root の環境変数サンプルをコピーします。
 
 ```bash
 cp .env.example .env
@@ -21,6 +51,8 @@ DB、バックエンド、フロントエンドをまとめて起動します。
 ```bash
 docker compose up --build
 ```
+
+ローカル Docker では backend 起動時に `prisma migrate deploy` を実行します。
 
 - Frontend: http://localhost:3000
 - Backend: http://localhost:4000
@@ -47,6 +79,13 @@ docker compose down -v
 pnpm install
 ```
 
+backend と frontend の環境変数サンプルをコピーします。
+
+```bash
+cp backend/.env.example backend/.env
+cp front/.env.example front/.env
+```
+
 DB だけ Docker で起動します。
 
 ```bash
@@ -70,4 +109,16 @@ pnpm dev:backend
 
 ```bash
 pnpm dev:front
+```
+
+## API Endpoints
+
+- `GET /health`: backend と DB 接続の health check
+- `GET /tasks`: task 一覧を取得
+- `POST /tasks`: task を作成
+
+## Verification
+
+```bash
+pnpm verify
 ```

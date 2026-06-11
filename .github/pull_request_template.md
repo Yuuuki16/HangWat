@@ -6,6 +6,9 @@
 
 ## 確認方法
 
+- [ ] `pnpm build`
+- [ ] `pnpm lint`
+- [ ] `pnpm test`
 
 ## 影響範囲
 

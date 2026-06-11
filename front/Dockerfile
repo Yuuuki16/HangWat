@@ -19,6 +19,5 @@ RUN ["rm", "-rf", "/usr/local/lib/node_modules/npm", "/usr/local/bin/npm", "/usr
 COPY --from=build /app/front/.next/standalone ./
 COPY --from=build /app/front/.next/static front/.next/static
 COPY --from=build /app/front/public front/public
-COPY --from=build /app/node_modules/.pnpm/picomatch@4.0.4/node_modules/picomatch /app/node_modules/.pnpm/next@16.2.9_@babel+core@7.29.7_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next/dist/compiled/picomatch
 EXPOSE 3000
 CMD ["node", "front/server.js"]
