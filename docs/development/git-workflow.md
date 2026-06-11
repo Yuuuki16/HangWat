@@ -25,6 +25,7 @@ docs/31-development-rules
 ## コミットメッセージ
 
 Conventional Commits をベースにします。
+`type` は英語の規定値を使い、`summary` は日本語で変更内容を簡潔に書きます。
 
 ```txt
 <type>: <summary>
@@ -43,10 +44,10 @@ Conventional Commits をベースにします。
 例:
 
 ```txt
-feat: add task creation endpoint
-fix: validate empty task title
-refactor: split task repository
-docs: add pull request guide
+feat: タスク作成 API を追加
+fix: 空のタスクタイトルを検証
+refactor: タスクリポジトリを分割
+docs: PR ルールを追加
 ```
 
 ## コミット粒度
