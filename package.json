@@ -1,0 +1,25 @@
+{
+  "name": "hangwat",
+  "private": true,
+  "scripts": {
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:front": "pnpm --filter front dev",
+    "build": "pnpm --filter backend build && pnpm --filter front build",
+    "lint": "pnpm --filter backend lint && pnpm --filter front lint",
+    "test": "pnpm --filter backend test",
+    "verify": "pnpm prisma:generate && pnpm build && pnpm lint && pnpm test",
+    "prisma:generate": "pnpm --filter backend prisma generate",
+    "prisma:migrate": "pnpm --filter backend prisma migrate dev"
+  },
+  "packageManager": "pnpm@10.0.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}
