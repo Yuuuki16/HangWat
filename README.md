@@ -2,6 +2,12 @@
 
 develop作成差分用にコメント
 
+## Development Rules
+
+開発ルール、Issue 管理、Git 運用、PR ルール、バックエンド設計方針は次を参照してください。
+
+- [Development Guide](./docs/development/README.md)
+
 ## Docker
 
 初回は必要に応じて環境変数サンプルをコピーします。
