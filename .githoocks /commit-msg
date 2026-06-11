@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Reject commits containing AI tool attribution (Made with Cursor, Co-Author, etc.)
+
+msg_file="$1"
+tmp="$(mktemp)"
+grep -viE "^(made with cursor|made-with:?[[:space:]]*cursor|co-authored-by:)" "$msg_file" > "$tmp"
+mv "$tmp" "$msg_file"
+
+msg=$(cat "$msg_file")
+
+# Patterns to reject (case-insensitive)
+if echo "$msg" | grep -qiE "made with cursor|made-with:?\s*cursor|co-authored-by:";
+then
+  echo "ERROR: コミットメッセージに AI ツール表記が含まれています。"
+  echo "  - 'Made with Cursor' / 'Made-with: Cursor' は禁止です"
+  echo "  - 'Co-Authored-By' も禁止です"
+  echo ""
+  echo "該当箇所を削除してから再度コミットしてください。"
+  exit 1
+fi
+
+exit 0
