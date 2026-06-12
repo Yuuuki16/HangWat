@@ -8,6 +8,7 @@
 - [Git / ブランチ / コミットルール](./git-workflow.md)
 - [Pull Request ルール](./pull-request.md)
 - [バックエンドアーキテクチャ](./backend-architecture.md)
+- [フロントエンドアーキテクチャ](./frontendArchitecture.md)
 - [コーディングルール](./coding-rules.md)
 
 ## 基本方針
@@ -15,4 +16,5 @@
 - 仕様、実装、レビューの判断基準を Issue と PR に残す。
 - 変更は小さく分け、レビューしやすい単位で Pull Request を作る。
 - バックエンドは責任分離を優先し、HTTP、ユースケース、ドメイン、DB 実装を混ぜない。
+- フロントエンドはルーティング、共通 UI、機能、データ接続の責任を分離する。
 - 迷ったルールはこのディレクトリに追記し、暗黙知にしない。
