@@ -1,7 +1,7 @@
 ---
 name: create-pr
 description: コミット、プッシュ、PR作成、CI失敗時の自動修正を一括実行する。`--wait` でレビュー指摘の自動修正まで行う。ユーザーの「PR作成」「PR作って」「PRお願い」で起動する。
-allowed-tools: Bash(git checkout --branch:*), Bash(git add:*), Bash(git status:*), Bash(git checkout:*), Bash(git push:*), Bash(git commit:*), Bash(gh pr create:*), Bash(gh issue comment:*), Bash(gh issue view:*), Bash(gh pr comment:*), Bash(git diff:*), Bash(pnpm prettier --config prettier.config.mjs --write:*), Bash(pnpm eslint:*), Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh api:*), Bash(sleep:*), Bash(for:*), Bash(gh run view:*), Bash(gh run list:*), Read, Edit
+allowed-tools: Bash(git checkout --branch:*), Bash(git add:*), Bash(git status:*), Bash(git checkout:*), Bash(git push -u origin:*), Bash(git commit:*), Bash(gh pr create:*), Bash(gh issue comment:*), Bash(gh issue view:*), Bash(gh pr comment:*), Bash(git diff:*), Bash(pnpm prettier --config prettier.config.mjs --write:*), Bash(pnpm eslint:*), Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh api:*), Bash(sleep:*), Bash(for:*), Bash(gh run view:*), Bash(gh run list:*), Read, Edit
 argument-hint: --issue <番号>（Issue紐付け）, --wait（レビュー待機・自動修正を有効化）
 ---
 
@@ -51,7 +51,7 @@ pnpm eslint apps/web/src/handler.ts --fix
 
 ラベルによるプレフィックス:
 
-onventional Commits をベースにします。
+Conventional Commits をベースにします。
 `type` は英語の規定値を使い、`summary` は日本語で変更内容を簡潔に書きます。
 
 ```txt
@@ -75,6 +75,7 @@ feat: タスク作成 API を追加
 fix: 空のタスクタイトルを検証
 refactor: タスクリポジトリを分割
 docs: PR ルールを追加
+```
 
 ### Step 4: コミット
 
@@ -98,7 +99,7 @@ git push -u origin <ブランチ名>
 
 ### Step 6: PR作成
 
-1. `templates/pr-body.md` を読み込む。
+1. `.github/pull_request_templates.md` を読み込む。
 2. 変更内容に基づいて本文を作る。
 3. `gh pr create --base develop --title "<タイトル>" --body "<本文>"` を実行。
 4. PR URL を報告。
@@ -150,5 +151,5 @@ gh pr checks <PR番号> --watch --fail-fast --interval 15
 
 ## 参照
 
-- `templates/pr-body.md`
+- `.github/pull_request_template.md`
 - `reviewing-docs` スキル
