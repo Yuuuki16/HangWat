@@ -14,6 +14,7 @@ RUN pnpm --filter front build
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 RUN ["apk", "upgrade", "--no-cache", "openssl", "libssl3", "libcrypto3"]
 RUN ["rm", "-rf", "/usr/local/lib/node_modules/npm", "/usr/local/bin/npm", "/usr/local/bin/npx"]
