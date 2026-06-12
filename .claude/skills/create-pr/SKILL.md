@@ -1,7 +1,7 @@
 ---
 name: create-pr
 description: コミット、プッシュ、PR作成、CI失敗時の自動修正を一括実行する。`--wait` でレビュー指摘の自動修正まで行う。ユーザーの「PR作成」「PR作って」「PRお願い」で起動する。
-allowed-tools: Bash(git checkout --branch:*), Bash(git add:*), Bash(git status:*), Bash(git checkout:*), Bash(git push -u origin:*), Bash(git commit:*), Bash(gh pr create:*), Bash(gh issue comment:*), Bash(gh issue view:*), Bash(gh pr comment:*), Bash(git diff:*), Bash(pnpm prettier --config prettier.config.mjs --write:*), Bash(pnpm eslint:*), Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh api:*), Bash(sleep:*), Bash(for:*), Bash(gh run view:*), Bash(gh run list:*), Read, Edit
+allowed-tools: Bash(git checkout --branch:*), Bash(git add:*), Bash(git status:*), Bash(git checkout:*), Bash(git push -u origin), Bash(git push origin), Bash(git commit:*), Bash(gh pr create:*), Bash(gh issue comment:*), Bash(gh issue view:*), Bash(gh pr comment:*), Bash(git diff:*), Bash(pnpm prettier --config prettier.config.mjs --write:*), Bash(pnpm eslint:*), Bash(gh pr checks:*), Bash(gh pr view:*), Bash(gh api:*), Bash(sleep:*), Bash(for:*), Bash(gh run view:*), Bash(gh run list:*), Read, Edit
 argument-hint: --issue <番号>（Issue紐付け）, --wait（レビュー待機・自動修正を有効化）
 ---
 
@@ -99,11 +99,18 @@ git commit -m "<type>: <具体的な変更内容（日本語）>"
 git push -u origin <ブランチ名>
 ```
 
-`--force` / `--force-with-lease` は禁止。
+実行時に以下のパターンのみを許可：
+
+- `git push -u origin <ブランチ名>`
+- `git push origin <ブランチ名>`
+
+禁止項目：
+
+- `--force` / `--force-with-lease` / `-f`
 
 ### Step 6: PR作成
 
-1. `.github/pull_request_templates.md` を読み込む。
+1. `.github/pull_request_template.md` を読み込む。
 2. 変更内容に基づいて本文を作る。
 3. `gh pr create --base develop --title "<タイトル>" --body "<本文>"` を実行。
 4. PR URL を報告。
