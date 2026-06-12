@@ -65,6 +65,13 @@ PostgreSQL は HTTP ではないため、ブラウザでは表示できません
 psql postgresql://postgres:postgres@localhost:5440/hangwat_dev
 ```
 
+接続後、テーブル一覧や task データを確認する場合は次を実行します。
+
+```sql
+\dt
+select * from "Task" limit 5;
+```
+
 backend と frontend のイメージを個別にビルドする場合も、build context は repository root にします。
 
 ```bash
