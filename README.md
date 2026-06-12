@@ -57,7 +57,13 @@ docker compose up --build
 - Frontend: http://localhost:3000
 - Backend: http://localhost:4000
 - Backend health check: http://localhost:4000/health
-- PostgreSQL: localhost:5440
+- PostgreSQL: `localhost:5440` (DB クライアントから接続)
+
+PostgreSQL は HTTP ではないため、ブラウザでは表示できません。`psql` などの DB クライアントから接続します。
+
+```bash
+psql postgresql://postgres:postgres@localhost:5440/hangwat_dev
+```
 
 backend と frontend のイメージを個別にビルドする場合も、build context は repository root にします。
 
