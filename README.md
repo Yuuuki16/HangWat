@@ -72,6 +72,14 @@ psql postgresql://postgres:postgres@localhost:5440/hangwat_dev
 select * from "Task" limit 5;
 ```
 
+ブラウザで DB の内容を確認する場合は Prisma Studio を使います。事前に `backend/.env` を作成してから起動してください。
+
+```bash
+pnpm prisma:studio
+```
+
+- Prisma Studio: http://localhost:5555
+
 backend と frontend のイメージを個別にビルドする場合も、build context は repository root にします。
 
 ```bash
