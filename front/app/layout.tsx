@@ -1,5 +1,17 @@
 import type { Metadata } from "next";
+import { Inter, Pacifico } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const pacifico = Pacifico({
+  subsets: ["latin"],
+  variable: "--font-pacifico",
+  weight: "400",
+});
 
 export const metadata: Metadata = {
   title: "HangWat",
@@ -12,8 +24,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html
+      lang="ja"
+      className={`${inter.variable} ${pacifico.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">
+        {children}
+      </body>
     </html>
   );
 }
