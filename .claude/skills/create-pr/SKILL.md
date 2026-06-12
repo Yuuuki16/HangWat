@@ -18,7 +18,7 @@ argument-hint: --issue <番号>（Issue紐付け）, --wait（レビュー待機
 | 個別指摘     | ファイル単位の修正指示（`【ファイル】` 形式のコメント）          |
 
 ## ワークフロー
-
+0. step 0 コーデイングルールを把握する
 1. Step 1-7: Lint → 計画ファイル → ブランチ → コミット → プッシュ → PR作成 → Issue連携
 2. Step 8: docsレビュー
 3. Step 9: CI待機。失敗時は自動修正ループ（最大3回）
@@ -27,6 +27,10 @@ argument-hint: --issue <番号>（Issue紐付け）, --wait（レビュー待機
 各Step完了時は必ず `[Step N] <結果の要約>` 形式で報告する。
 
 ## 手順
+
+### Step 0: コーディング規約を確認
+
+- `/docs/development/coding-rules.md` に目を通して準拠するべきこのコーディング規約を把握する
 
 ### Step 1: Lint
 
