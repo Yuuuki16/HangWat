@@ -1,9 +1,13 @@
 import { Hono } from "hono";
-import type { Context } from "hono";
 import { deleteCookie, getSignedCookie, setSignedCookie } from "hono/cookie";
 
-import { ApplicationError } from "../../application/errors/applicationError.js";
 import type { AuthService } from "../../application/services/authService.js";
+import {
+  errorResponse,
+  handleRouteError,
+  validationError,
+  type ValidationDetail,
+} from "./routeHelper.js";
 
 const maxNameLength = 50;
 const maxEmailLength = 255;
@@ -18,19 +22,6 @@ type AuthRouteService = Pick<
   AuthService,
   "register" | "login" | "getCurrentUser"
 >;
-
-type ValidationDetail = {
-  field: string;
-  message: string;
-};
-
-type ErrorCode =
-  | "VALIDATION_ERROR"
-  | "UNAUTHORIZED"
-  | "FORBIDDEN"
-  | "NOT_FOUND"
-  | "CONFLICT"
-  | "INTERNAL_SERVER_ERROR";
 
 export function createAuthRoutes(
   authService: AuthRouteService,
@@ -252,46 +243,4 @@ function isObject(
   value: unknown,
 ): value is { name?: unknown; email?: unknown; password?: unknown } {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function handleRouteError(c: Context, error: unknown) {
-  if (error instanceof ApplicationError) {
-    const statusByCode: Record<
-      ApplicationError["code"],
-      401 | 403 | 404 | 409
-    > = {
-      UNAUTHORIZED: 401,
-      FORBIDDEN: 403,
-      NOT_FOUND: 404,
-      CONFLICT: 409,
-    };
-    const status = statusByCode[error.code];
-
-    return errorResponse(c, error.code, error.message, status);
-  }
-
-  console.error(error);
-  return errorResponse(c, "INTERNAL_SERVER_ERROR", "サーバーエラー", 500);
-}
-
-function validationError(c: Context, details: ValidationDetail[]) {
-  return c.json(
-    {
-      error: {
-        code: "VALIDATION_ERROR" satisfies ErrorCode,
-        message: "入力内容が正しくありません",
-        details,
-      },
-    },
-    400,
-  );
-}
-
-function errorResponse(
-  c: Context,
-  code: Exclude<ErrorCode, "VALIDATION_ERROR">,
-  message: string,
-  status: 401 | 403 | 404 | 409 | 500,
-) {
-  return c.json({ error: { code, message } }, status);
 }
