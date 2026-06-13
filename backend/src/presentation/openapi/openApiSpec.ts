@@ -38,6 +38,40 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/auth/login": {
+      post: {
+        summary: "Log in a user",
+        tags: ["Auth"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/LoginRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Logged in user",
+            headers: {
+              "Set-Cookie": {
+                description:
+                  "署名付きセッショントークンを保持する HttpOnly Cookie",
+                schema: { type: "string" },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AuthUserResponse" },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/": {
       get: {
         summary: "API information",
@@ -299,6 +333,21 @@ export const openApiSpec = {
             type: "string",
             minLength: 8,
             maxLength: 100,
+            example: "password123",
+          },
+        },
+      },
+      LoginRequest: {
+        type: "object",
+        required: ["email", "password"],
+        properties: {
+          email: {
+            type: "string",
+            format: "email",
+            example: "takuya@example.com",
+          },
+          password: {
+            type: "string",
             example: "password123",
           },
         },

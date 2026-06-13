@@ -3,7 +3,10 @@ import type {
   AuthUser,
   AuthRepository,
 } from "../../domain/repositories/authRepository.js";
-import { hashPassword } from "../../infrastructure/auth/passwordHasher.js";
+import {
+  hashPassword,
+  verifyPassword,
+} from "../../infrastructure/auth/passwordHasher.js";
 
 export type AuthUserDto = {
   id: string;
@@ -36,6 +39,28 @@ export class AuthService {
     });
 
     return this.toUserDto(user);
+  }
+
+  async login(input: {
+    email: string;
+    password: string;
+  }): Promise<AuthUserDto> {
+    const credential = await this.authRepository.findCredentialByEmail(
+      input.email,
+    );
+
+    const passwordMatches =
+      credential !== null &&
+      (await verifyPassword(input.password, credential.passwordHash));
+
+    if (credential === null || !passwordMatches) {
+      throw new ApplicationError(
+        "UNAUTHORIZED",
+        "メールアドレスまたはパスワードが正しくありません",
+      );
+    }
+
+    return this.toUserDto(credential);
   }
 
   private toUserDto(user: AuthUser): AuthUserDto {

@@ -5,6 +5,10 @@ export type AuthUser = {
   avatarUrl: string | null;
 };
 
+export type AuthUserCredential = AuthUser & {
+  passwordHash: string;
+};
+
 export interface AuthRepository {
   findUserByEmail(email: string): Promise<{ id: bigint } | null>;
   createUser(input: {
@@ -12,4 +16,5 @@ export interface AuthRepository {
     email: string;
     passwordHash: string;
   }): Promise<AuthUser>;
+  findCredentialByEmail(email: string): Promise<AuthUserCredential | null>;
 }

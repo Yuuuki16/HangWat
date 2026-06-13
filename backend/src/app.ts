@@ -14,6 +14,11 @@ import { createDocsRoutes } from "./presentation/routes/docsRoutes.js";
 import { createHealthRoutes } from "./presentation/routes/healthRoutes.js";
 
 export function createApp() {
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (sessionSecret === undefined || sessionSecret.length === 0) {
+    throw new Error("SESSION_SECRET is not set");
+  }
+
   const app = new Hono();
 
   app.use(
@@ -43,7 +48,7 @@ export function createApp() {
   const healthRepository = new PrismaHealthRepository(prisma);
   const healthService = new HealthService(healthRepository);
 
-  app.route("/api", createAuthRoutes(authService));
+  app.route("/api", createAuthRoutes(authService, sessionSecret));
   app.route("/api", createCommentRoutes(commentService));
   app.route("/", createDocsRoutes());
   app.route("/", createHealthRoutes(healthService));

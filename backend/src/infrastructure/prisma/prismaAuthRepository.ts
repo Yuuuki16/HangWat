@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 
 import type {
   AuthUser,
+  AuthUserCredential,
   AuthRepository,
 } from "../../domain/repositories/authRepository.js";
 
@@ -37,5 +38,20 @@ export class PrismaAuthRepository implements AuthRepository {
     });
 
     return user satisfies AuthUser;
+  }
+
+  async findCredentialByEmail(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+        passwordHash: true,
+      },
+    });
+
+    return user satisfies AuthUserCredential | null;
   }
 }

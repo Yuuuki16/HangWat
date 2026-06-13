@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
+import { setSignedCookie } from "hono/cookie";
 
 import { ApplicationError } from "../../application/errors/applicationError.js";
 import type { AuthService } from "../../application/services/authService.js";
@@ -10,7 +11,10 @@ const minPasswordLength = 8;
 const maxPasswordLength = 100;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type AuthRouteService = Pick<AuthService, "register">;
+const sessionCookieName = "session_token";
+const sessionCookieMaxAgeSeconds = 60 * 60 * 24 * 30;
+
+type AuthRouteService = Pick<AuthService, "register" | "login">;
 
 type ValidationDetail = {
   field: string;
@@ -25,7 +29,10 @@ type ErrorCode =
   | "CONFLICT"
   | "INTERNAL_SERVER_ERROR";
 
-export function createAuthRoutes(authService: AuthRouteService) {
+export function createAuthRoutes(
+  authService: AuthRouteService,
+  sessionSecret: string,
+) {
   const app = new Hono();
 
   app.post("/auth/register", async (c) => {
@@ -37,6 +44,29 @@ export function createAuthRoutes(authService: AuthRouteService) {
     try {
       const user = await authService.register(body.value);
       return c.json({ user }, 201);
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.post("/auth/login", async (c) => {
+    const body = await validateLoginBody(c.req.json.bind(c.req));
+    if (!body.ok) {
+      return validationError(c, body.details);
+    }
+
+    try {
+      const user = await authService.login(body.value);
+
+      await setSignedCookie(c, sessionCookieName, user.id, sessionSecret, {
+        httpOnly: true,
+        sameSite: "Lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: sessionCookieMaxAgeSeconds,
+      });
+
+      return c.json({ user });
     } catch (error) {
       return handleRouteError(c, error);
     }
@@ -115,6 +145,54 @@ async function validateRegisterBody(
   }
 
   return { ok: true, value: { name, email, password } };
+}
+
+async function validateLoginBody(
+  readJson: () => Promise<unknown>,
+): Promise<
+  | { ok: true; value: { email: string; password: string } }
+  | { ok: false; details: ValidationDetail[] }
+> {
+  let requestBody: unknown;
+  try {
+    requestBody = await readJson();
+  } catch {
+    return {
+      ok: false,
+      details: [
+        { field: "body", message: "リクエストボディが正しくありません" },
+      ],
+    };
+  }
+
+  if (!isObject(requestBody)) {
+    return {
+      ok: false,
+      details: [
+        { field: "body", message: "リクエストボディが正しくありません" },
+      ],
+    };
+  }
+
+  const details: ValidationDetail[] = [];
+
+  const email =
+    typeof requestBody.email === "string" ? requestBody.email.trim() : null;
+  if (email === null || email.length === 0) {
+    details.push({ field: "email", message: "メールアドレスは必須です" });
+  }
+
+  const password =
+    typeof requestBody.password === "string" ? requestBody.password : null;
+  if (password === null || password.length === 0) {
+    details.push({ field: "password", message: "パスワードは必須です" });
+  }
+
+  if (email === null || password === null || details.length > 0) {
+    return { ok: false, details };
+  }
+
+  return { ok: true, value: { email, password } };
 }
 
 function isObject(
