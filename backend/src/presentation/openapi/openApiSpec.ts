@@ -466,6 +466,7 @@ export const openApiSpec = {
               },
             },
           },
+          "400": { $ref: "#/components/responses/ValidationError" },
           "401": { $ref: "#/components/responses/Unauthorized" },
           "403": { $ref: "#/components/responses/Forbidden" },
           "404": { $ref: "#/components/responses/NotFound" },
@@ -1077,7 +1078,7 @@ export const openApiSpec = {
         type: "object",
         required: ["displayName"],
         properties: {
-          displayName: { type: "string", example: "たくや" },
+          displayName: { type: "string", maxLength: 50, example: "たくや" },
         },
       },
       EventListItem: {

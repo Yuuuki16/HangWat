@@ -288,8 +288,6 @@ describe("eventMemberRoutes", () => {
   });
 });
 
-// ─── PATCH /events/:eventId/members/:memberId ───────────────────────────────
-
 const sampleUpdatedMember = {
   id: "6",
   eventId: "1",
