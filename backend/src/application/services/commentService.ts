@@ -114,6 +114,9 @@ export class CommentService {
       commentId: comment.id,
       eventMemberId: currentMember.id,
     });
+    if (likeState === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
 
     return this.toCommentLikeDto(likeState);
   }
@@ -136,6 +139,9 @@ export class CommentService {
       commentId: comment.id,
       eventMemberId: currentMember.id,
     });
+    if (likeState === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
 
     return this.toCommentLikeDto(likeState);
   }

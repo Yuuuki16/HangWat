@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 
 import type {
   CommentCandidate,
@@ -115,16 +115,24 @@ export class PrismaCommentRepository implements CommentRepository {
   }
 
   async likeComment(input: { commentId: bigint; eventMemberId: bigint }) {
-    await this.prisma.commentLike.upsert({
-      where: {
-        commentId_eventMemberId: {
-          commentId: input.commentId,
-          eventMemberId: input.eventMemberId,
+    try {
+      await this.prisma.commentLike.upsert({
+        where: {
+          commentId_eventMemberId: {
+            commentId: input.commentId,
+            eventMemberId: input.eventMemberId,
+          },
         },
-      },
-      create: input,
-      update: {},
-    });
+        create: input,
+        update: {},
+      });
+    } catch (error) {
+      if (isMissingCommentLikeTargetError(error)) {
+        return null;
+      }
+
+      throw error;
+    }
 
     return this.findCommentLikeState(input.commentId, input.eventMemberId);
   }
@@ -176,8 +184,8 @@ export class PrismaCommentRepository implements CommentRepository {
   private async findCommentLikeState(
     commentId: bigint,
     currentMemberId: bigint,
-  ): Promise<CommentLikeState> {
-    const comment = await this.prisma.comment.findUniqueOrThrow({
+  ): Promise<CommentLikeState | null> {
+    const comment = await this.prisma.comment.findUnique({
       where: { id: commentId },
       select: {
         id: true,
@@ -191,6 +199,9 @@ export class PrismaCommentRepository implements CommentRepository {
         },
       },
     });
+    if (comment === null) {
+      return null;
+    }
 
     return {
       commentId: comment.id,
@@ -225,4 +236,11 @@ export class PrismaCommentRepository implements CommentRepository {
       eventId: comment.candidate.eventId,
     };
   }
+}
+
+function isMissingCommentLikeTargetError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2003" || error.code === "P2025")
+  );
 }

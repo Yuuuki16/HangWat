@@ -23,6 +23,8 @@ class FakeCommentRepository implements CommentRepository {
   readonly comments = new Map<string, CommentRecordWithEvent>();
   readonly commentLikes = new Set<string>();
   readonly deletedCommentIds: bigint[] = [];
+  returnNullFromLikeComment = false;
+  returnNullFromUnlikeComment = false;
   nextCommentId = 100n;
 
   async findEventMemberById(eventMemberId: bigint) {
@@ -86,7 +88,11 @@ class FakeCommentRepository implements CommentRepository {
   async likeComment(input: {
     commentId: bigint;
     eventMemberId: bigint;
-  }): Promise<CommentLikeState> {
+  }): Promise<CommentLikeState | null> {
+    if (this.returnNullFromLikeComment) {
+      return null;
+    }
+
     const comment = this.comments.get(key(input.commentId));
     assert.ok(comment);
 
@@ -107,7 +113,11 @@ class FakeCommentRepository implements CommentRepository {
   async unlikeComment(input: {
     commentId: bigint;
     eventMemberId: bigint;
-  }): Promise<CommentLikeState> {
+  }): Promise<CommentLikeState | null> {
+    if (this.returnNullFromUnlikeComment) {
+      return null;
+    }
+
     const comment = this.comments.get(key(input.commentId));
     assert.ok(comment);
 
@@ -366,6 +376,17 @@ describe("CommentService", () => {
     );
   });
 
+  it("returns not found when comment disappears while liking", async () => {
+    const repository = createRepository();
+    repository.returnNullFromLikeComment = true;
+    const service = new CommentService(repository);
+
+    await assertRejectsWithCode(
+      () => service.likeComment({ commentId: 1n, currentMemberId: 5n }),
+      "NOT_FOUND",
+    );
+  });
+
   it("unlikes a comment by event participant", async () => {
     const repository = createRepository();
     const service = new CommentService(repository);
@@ -426,6 +447,17 @@ describe("CommentService", () => {
 
     await assertRejectsWithCode(
       () => service.unlikeComment({ commentId: 999n, currentMemberId: 5n }),
+      "NOT_FOUND",
+    );
+  });
+
+  it("returns not found when comment disappears while unliking", async () => {
+    const repository = createRepository();
+    repository.returnNullFromUnlikeComment = true;
+    const service = new CommentService(repository);
+
+    await assertRejectsWithCode(
+      () => service.unlikeComment({ commentId: 1n, currentMemberId: 5n }),
       "NOT_FOUND",
     );
   });
