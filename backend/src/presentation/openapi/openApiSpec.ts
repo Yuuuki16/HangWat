@@ -921,6 +921,37 @@ export const openApiSpec = {
           },
         },
       },
+      LocationInput: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: { type: "string", example: "大阪駅" },
+          address: {
+            type: ["string", "null"],
+            example: "大阪府大阪市北区梅田3丁目1-1",
+          },
+          googlePlaceId: {
+            type: ["string", "null"],
+            example: "ChIJxxxxxxxxxxxx",
+          },
+          latitude: {
+            type: ["number", "null"],
+            minimum: -90,
+            maximum: 90,
+            example: 34.702485,
+          },
+          longitude: {
+            type: ["number", "null"],
+            minimum: -180,
+            maximum: 180,
+            example: 135.495951,
+          },
+          googleMapsUrl: {
+            type: ["string", "null"],
+            example: "https://www.google.com/maps/place/...",
+          },
+        },
+      },
       User: {
         type: ["object", "null"],
         required: ["id", "name", "avatarUrl"],
@@ -1247,7 +1278,7 @@ export const openApiSpec = {
           },
           location: {
             oneOf: [
-              { $ref: "#/components/schemas/Location" },
+              { $ref: "#/components/schemas/LocationInput" },
               { type: "null" },
             ],
           },

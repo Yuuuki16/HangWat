@@ -282,7 +282,6 @@ async function validateEventBody(
   if (requestBody.date !== undefined && requestBody.date !== null) {
     if (
       typeof requestBody.date !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(requestBody.date) ||
       !isValidCalendarDate(requestBody.date)
     ) {
       details.push({
@@ -307,13 +306,29 @@ async function validateEventBody(
         message: "location.name は必須です",
       });
     } else {
+      const latitude =
+        typeof loc.latitude === "number" ? loc.latitude : null;
+      const longitude =
+        typeof loc.longitude === "number" ? loc.longitude : null;
+      if (latitude !== null && (latitude < -90 || latitude > 90)) {
+        details.push({
+          field: "location.latitude",
+          message: "location.latitude は -90〜90 の範囲で指定してください",
+        });
+      }
+      if (longitude !== null && (longitude < -180 || longitude > 180)) {
+        details.push({
+          field: "location.longitude",
+          message: "location.longitude は -180〜180 の範囲で指定してください",
+        });
+      }
       location = {
         name: loc.name.trim(),
         address: typeof loc.address === "string" ? loc.address : null,
         googlePlaceId:
           typeof loc.googlePlaceId === "string" ? loc.googlePlaceId : null,
-        latitude: typeof loc.latitude === "number" ? loc.latitude : null,
-        longitude: typeof loc.longitude === "number" ? loc.longitude : null,
+        latitude,
+        longitude,
         googleMapsUrl:
           typeof loc.googleMapsUrl === "string" ? loc.googleMapsUrl : null,
       };
@@ -420,7 +435,13 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 function isValidCalendarDate(dateStr: string): boolean {
-  const [year, month, day] = dateStr.split("-").map(Number);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (match === null) {
+    return false;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
   const d = new Date(Date.UTC(year, month - 1, day));
   return (
     d.getUTCFullYear() === year &&
