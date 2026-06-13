@@ -545,6 +545,85 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/events/{eventId}/locations/google-place-autocomplete": {
+      get: {
+        summary: "Get Google Place autocomplete predictions",
+        tags: ["Location"],
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+          {
+            name: "input",
+            in: "query",
+            required: true,
+            schema: { type: "string", minLength: 1, maxLength: 200 },
+            description: "Search string",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Place predictions",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["predictions"],
+                  properties: {
+                    predictions: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/GooglePlacePrediction" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/locations/google-place-details": {
+      get: {
+        summary: "Get Google Place details by Place ID",
+        tags: ["Location"],
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+          {
+            name: "googlePlaceId",
+            in: "query",
+            required: true,
+            schema: { type: "string", minLength: 1, maxLength: 300 },
+            description: "Google Place ID",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Place details",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["location"],
+                  properties: {
+                    location: { $ref: "#/components/schemas/Location" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/api/events/{eventId}/candidates": {
       post: {
         summary: "Create a schedule candidate",
@@ -996,6 +1075,15 @@ export const openApiSpec = {
             type: ["string", "null"],
             example: "https://www.google.com/maps/place/...",
           },
+        },
+      },
+      GooglePlacePrediction: {
+        type: "object",
+        required: ["googlePlaceId", "name", "address"],
+        properties: {
+          googlePlaceId: { type: "string", example: "ChIJyyyyyyyyyyyy" },
+          name: { type: "string", example: "一蘭 梅田店" },
+          address: { type: "string", example: "大阪府大阪市北区梅田1丁目" },
         },
       },
       ResolveGoogleMapsUrlRequest: {

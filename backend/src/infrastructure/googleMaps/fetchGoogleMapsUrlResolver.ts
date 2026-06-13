@@ -7,8 +7,30 @@ const userAgent =
   "Mozilla/5.0 (compatible; HangWat/1.0; +https://github.com/Yuuuki16/HangWat)";
 const FETCH_TIMEOUT_MS = 10_000;
 
+const allowedHostnames = new Set([
+  "maps.app.goo.gl",
+  "goo.gl",
+  "maps.google.com",
+  "maps.google.co.jp",
+  "www.google.com",
+  "google.com",
+]);
+
+function isAllowedHost(rawUrl: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:") return false;
+  return allowedHostnames.has(parsed.hostname.toLowerCase());
+}
+
 export class FetchGoogleMapsUrlResolver implements GoogleMapsUrlResolver {
   async resolve(url: string): Promise<ResolvedGoogleMapsLocation | null> {
+    if (!isAllowedHost(url)) return null;
+
     let resolvedUrl = url;
     let html = "";
 
