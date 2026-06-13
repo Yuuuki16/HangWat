@@ -1,6 +1,7 @@
 import { CalendarDays, MapPin, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { Event } from "@/features/events/types/event";
+import { formatEventDate } from "@/features/events/utils/formatEventDate";
 
 type EventCardProps = {
   event: Event;
@@ -22,7 +23,7 @@ export function EventCard({ event }: EventCardProps) {
           <dt>
             <CalendarDays aria-label="開催日" size={18} strokeWidth={2} />
           </dt>
-          <dd>{event.date}</dd>
+          <dd>{formatEventDate(event.date)}</dd>
         </div>
         <div className="flex items-center gap-2">
           <dt>

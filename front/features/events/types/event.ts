@@ -3,4 +3,7 @@ export type Event = {
   title: string;
   date: string;
   location: string;
+  details: string;
+  participantCount: number;
+  participationUrl: string;
 };
