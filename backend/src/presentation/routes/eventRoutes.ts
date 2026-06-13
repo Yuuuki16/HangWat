@@ -13,7 +13,7 @@ const sessionCookieName = "session_token";
 
 type EventRouteService = Pick<
   EventService,
-  "listEvents" | "createEvent" | "getEventDetail"
+  "listEvents" | "createEvent" | "getEventDetail" | "updateEvent"
 >;
 
 type ValidationDetail = {
@@ -64,7 +64,7 @@ export function createEventRoutes(
       return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
     }
 
-    const body = await validateCreateEventBody(c.req.json.bind(c.req));
+    const body = await validateEventBody(c.req.json.bind(c.req));
     if (!body.ok) {
       return validationError(c, body.details);
     }
@@ -75,6 +75,47 @@ export function createEventRoutes(
         ...body.value,
       });
       return c.json(result, 201);
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.patch("/events/:eventId", async (c) => {
+    const sessionUserId = await getSignedCookie(
+      c,
+      sessionSecret,
+      sessionCookieName,
+    );
+    if (!sessionUserId) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    const userId = parseUserId(sessionUserId);
+    if (userId === null) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    const eventId = parseId(
+      c.req.param("eventId"),
+      "eventId",
+      "eventId が不正です",
+    );
+    if (!eventId.ok) {
+      return validationError(c, [eventId.detail]);
+    }
+
+    const body = await validateEventBody(c.req.json.bind(c.req));
+    if (!body.ok) {
+      return validationError(c, body.details);
+    }
+
+    try {
+      const result = await eventService.updateEvent({
+        userId,
+        eventId: eventId.value,
+        ...body.value,
+      });
+      return c.json(result, 200);
     } catch (error) {
       return handleRouteError(c, error);
     }
@@ -153,7 +194,7 @@ function validateCurrentMemberHeader(
   return { ok: true, value: parsed.value };
 }
 
-async function validateCreateEventBody(
+async function validateEventBody(
   readJson: () => Promise<unknown>,
 ): Promise<
   | {

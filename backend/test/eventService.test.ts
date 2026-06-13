@@ -16,6 +16,8 @@ import type {
   EventListRecord,
   EventMemberRecord,
   EventRepository,
+  EventUpdateInput,
+  EventUpdatedRecord,
 } from "../src/domain/repositories/eventRepository.js";
 
 class FakeEventRepository implements EventRepository {
@@ -40,6 +42,43 @@ class FakeEventRepository implements EventRepository {
 
   async findEventDetailById(eventId: bigint) {
     return this.events.get(key(eventId)) ?? null;
+  }
+
+  async findEventMemberByUserAndEvent(
+    eventId: bigint,
+    userId: bigint,
+  ): Promise<EventMemberRecord | null> {
+    for (const member of this.eventMembers.values()) {
+      if (member.eventId === eventId && member.userId === userId) {
+        return member;
+      }
+    }
+    return null;
+  }
+
+  async updateEvent(input: EventUpdateInput): Promise<EventUpdatedRecord> {
+    const event = this.events.get(key(input.eventId));
+    if (event === undefined) {
+      throw new Error("event not found");
+    }
+    const updatedAt = new Date("2026-07-31T10:30:00.000Z");
+    const updated: EventDetailRecord = {
+      ...event,
+      title: input.title,
+      eventDate: input.eventDate,
+      location: input.location,
+      description: input.description,
+      updatedAt,
+    };
+    this.events.set(key(input.eventId), updated);
+    return {
+      id: input.eventId,
+      title: input.title,
+      eventDate: input.eventDate,
+      location: input.location,
+      description: input.description,
+      updatedAt,
+    };
   }
 
   async createEvent(input: EventCreateInput): Promise<EventCreatedRecord> {
@@ -389,6 +428,98 @@ describe("EventService", () => {
         "FORBIDDEN",
       );
     });
+  });
+});
+
+describe("EventService.updateEvent", () => {
+  it("updates event and returns dto", async () => {
+    const repository = createRepository();
+    const service = new EventService(repository);
+
+    const result = await service.updateEvent({
+      userId: 1n,
+      eventId: 1n,
+      title: "梅田で夜ごはん",
+      date: "2026-08-01",
+      location: {
+        name: "梅田駅",
+        address: "大阪府大阪市北区梅田",
+        googlePlaceId: null,
+        latitude: null,
+        longitude: null,
+        googleMapsUrl: null,
+      },
+      description: "夜ごはん候補を決める",
+    });
+
+    assert.equal(result.event.id, "1");
+    assert.equal(result.event.title, "梅田で夜ごはん");
+    assert.equal(result.event.date, "2026-08-01");
+    assert.equal(result.event.description, "夜ごはん候補を決める");
+    assert.ok(result.event.updatedAt);
+  });
+
+  it("returns NOT_FOUND when event does not exist", async () => {
+    const repository = createRepository();
+    const service = new EventService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.updateEvent({
+          userId: 1n,
+          eventId: 999n,
+          title: "テスト",
+          date: null,
+          location: null,
+          description: null,
+        }),
+      "NOT_FOUND",
+    );
+  });
+
+  it("returns FORBIDDEN when user is not a member", async () => {
+    const repository = createRepository();
+    const service = new EventService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.updateEvent({
+          userId: 999n,
+          eventId: 1n,
+          title: "テスト",
+          date: null,
+          location: null,
+          description: null,
+        }),
+      "FORBIDDEN",
+    );
+  });
+
+  it("returns FORBIDDEN when user is a member but not owner", async () => {
+    const repository = createRepository();
+    const service = new EventService(repository);
+
+    repository.eventMembers.set("8", {
+      id: 8n,
+      eventId: 1n,
+      userId: 2n,
+      displayName: "別ユーザー",
+      role: "MEMBER",
+      user: { id: 2n, name: "別ユーザー", avatarUrl: null },
+    });
+
+    await assertRejectsWithCode(
+      () =>
+        service.updateEvent({
+          userId: 2n,
+          eventId: 1n,
+          title: "テスト",
+          date: null,
+          location: null,
+          description: null,
+        }),
+      "FORBIDDEN",
+    );
   });
 });
 

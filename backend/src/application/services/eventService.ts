@@ -7,6 +7,7 @@ import type {
   EventLocationRecord,
   EventMemberRecord,
   EventRepository,
+  EventUpdatedRecord,
 } from "../../domain/repositories/eventRepository.js";
 import { EventUserNotFoundError } from "../../domain/repositories/eventRepository.js";
 
@@ -93,6 +94,17 @@ export type EventDetailDto = {
   }[];
 };
 
+export type EventUpdatedDto = {
+  event: {
+    id: string;
+    title: string;
+    date: string | null;
+    location: LocationDto | null;
+    description: string | null;
+    updatedAt: string;
+  };
+};
+
 export class EventService {
   constructor(private readonly eventRepository: EventRepository) {}
 
@@ -147,6 +159,39 @@ export class EventService {
         updatedAt: event.updatedAt.toISOString(),
       },
     };
+  }
+
+  async updateEvent(input: {
+    userId: bigint;
+    eventId: bigint;
+    title: string;
+    date: string | null;
+    location: EventLocationRecord | null;
+    description: string | null;
+  }): Promise<EventUpdatedDto> {
+    const event = await this.eventRepository.findEventDetailById(input.eventId);
+    if (event === null) {
+      throw new ApplicationError("NOT_FOUND", "イベントが存在しません");
+    }
+
+    const member = await this.eventRepository.findEventMemberByUserAndEvent(
+      input.eventId,
+      input.userId,
+    );
+    if (member === null || member.role !== "OWNER") {
+      throw new ApplicationError("FORBIDDEN", "編集権限がありません");
+    }
+
+    const eventDate = input.date === null ? null : new Date(input.date);
+    const updated = await this.eventRepository.updateEvent({
+      eventId: input.eventId,
+      title: input.title,
+      eventDate,
+      location: input.location,
+      description: input.description,
+    });
+
+    return toEventUpdatedDto(updated);
   }
 
   async getEventDetail(input: {
@@ -217,6 +262,19 @@ export class EventService {
       ),
     };
   }
+}
+
+function toEventUpdatedDto(record: EventUpdatedRecord): EventUpdatedDto {
+  return {
+    event: {
+      id: record.id.toString(),
+      title: record.title,
+      date: record.eventDate === null ? null : formatDate(record.eventDate),
+      location: toLocationDto(record.location),
+      description: record.description,
+      updatedAt: record.updatedAt.toISOString(),
+    },
+  };
 }
 
 function toCandidateDto(candidate: EventCandidateRecord) {
