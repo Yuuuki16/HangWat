@@ -26,6 +26,7 @@ export function createApp() {
     "*",
     cors({
       origin: process.env.FRONTEND_ORIGIN ?? "http://localhost:3000",
+      credentials: true,
     }),
   );
 
