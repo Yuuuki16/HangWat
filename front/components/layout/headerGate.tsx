@@ -31,5 +31,5 @@ export function HeaderGate() {
     );
   }
 
-  return <Header backLink={{ href: "/home", label: "ホーム" }} />;
+  return <Header backLink={{ href: "/home", label: "ホームへ" }} />;
 }
