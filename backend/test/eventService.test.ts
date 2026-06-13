@@ -602,7 +602,6 @@ function createRepository(): FakeEventRepository {
     },
   };
 
-  repository.users.set("1", { id: 1n });
   repository.eventsByUserId.set("1", [sampleEvent]);
   repository.eventMembers.set("5", guestMember);
   repository.eventMembers.set("6", ownerMember);
