@@ -390,6 +390,34 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/events/{eventId}/candidates/{candidateId}/cancel-confirm": {
+      post: {
+        summary: "Cancel a confirmed schedule candidate",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/CandidateId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Cancelled schedule candidate confirmation",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ScheduleCandidateConfirmation",
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "409": { $ref: "#/components/responses/Conflict" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/api/events/{eventId}/candidates/{candidateId}/comments": {
       get: {
         summary: "List comments for a schedule candidate",

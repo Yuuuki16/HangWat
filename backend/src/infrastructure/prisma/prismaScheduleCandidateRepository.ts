@@ -210,6 +210,28 @@ export class PrismaScheduleCandidateRepository
     return confirmation satisfies ScheduleCandidateConfirmationRecord;
   }
 
+  async cancelScheduleCandidateConfirmation(input: {
+    eventId: bigint;
+    candidateId: bigint;
+  }) {
+    const confirmation = await this.prisma.$transaction(async (tx) => {
+      const event = await tx.event.update({
+        where: { id: input.eventId },
+        data: { confirmedCandidateId: null },
+        select: { id: true, confirmedCandidateId: true },
+      });
+      const candidate = await tx.scheduleCandidate.update({
+        where: { id: input.candidateId },
+        data: { status: "PROPOSED" },
+        select: { id: true, status: true },
+      });
+
+      return { event, candidate };
+    });
+
+    return confirmation satisfies ScheduleCandidateConfirmationRecord;
+  }
+
   private scheduleCandidateResponseSelect() {
     return {
       id: true,

@@ -89,4 +89,8 @@ export interface ScheduleCandidateRepository {
     eventId: bigint;
     candidateId: bigint;
   }): Promise<ScheduleCandidateConfirmationRecord>;
+  cancelScheduleCandidateConfirmation(input: {
+    eventId: bigint;
+    candidateId: bigint;
+  }): Promise<ScheduleCandidateConfirmationRecord>;
 }

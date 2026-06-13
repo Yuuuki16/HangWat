@@ -212,6 +212,50 @@ export class ScheduleCandidateService {
     return this.toScheduleCandidateConfirmationDto(confirmation);
   }
 
+  async cancelScheduleCandidateConfirmation(input: {
+    eventId: bigint;
+    candidateId: bigint;
+    currentMemberId: bigint;
+  }) {
+    const currentMember = await this.resolveCurrentMember(
+      input.currentMemberId,
+    );
+    const event = await this.scheduleCandidateRepository.findEventById(
+      input.eventId,
+    );
+    if (event === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+    this.assertMemberBelongsToEvent(currentMember, event.id);
+    this.assertOwner(currentMember);
+
+    const existingCandidate =
+      await this.scheduleCandidateRepository.findScheduleCandidateById(
+        input.candidateId,
+      );
+    if (
+      existingCandidate === null ||
+      existingCandidate.eventId !== event.id
+    ) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+
+    if (event.confirmedCandidateId !== existingCandidate.id) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "指定された予定候補は確定されていません",
+      );
+    }
+
+    const confirmation =
+      await this.scheduleCandidateRepository.cancelScheduleCandidateConfirmation({
+        eventId: event.id,
+        candidateId: existingCandidate.id,
+      });
+
+    return this.toScheduleCandidateConfirmationDto(confirmation);
+  }
+
   private async resolveCurrentMember(currentMemberId: bigint) {
     const currentMember =
       await this.scheduleCandidateRepository.findEventMemberById(
