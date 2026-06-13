@@ -122,6 +122,12 @@ export class PrismaEventRepository implements EventRepository {
 
   async createEvent(input: EventCreateInput): Promise<EventCreatedRecord> {
     const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: input.userId },
+        select: { name: true },
+      });
+      if (user === null) throw new EventUserNotFoundError();
+
       let locationId: bigint | null = null;
       if (input.location !== null) {
         const location = await tx.location.create({
@@ -154,12 +160,6 @@ export class PrismaEventRepository implements EventRepository {
           updatedAt: true,
         },
       });
-
-      const user = await tx.user.findUnique({
-        where: { id: input.userId },
-        select: { name: true },
-      });
-      if (user === null) throw new EventUserNotFoundError();
 
       const member = await tx.eventMember.create({
         data: {
@@ -396,7 +396,6 @@ export class PrismaEventRepository implements EventRepository {
 
   async deleteEvent(eventId: bigint): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      // Comment likes → comments → candidates の順で削除
       const candidateIds = await tx.scheduleCandidate.findMany({
         where: { eventId },
         select: { id: true },
@@ -412,14 +411,12 @@ export class PrismaEventRepository implements EventRepository {
         });
       }
 
-      // confirmedCandidateId の参照を解除してから candidates 削除
       await tx.event.update({
         where: { id: eventId },
         data: { confirmedCandidateId: null },
       });
       await tx.scheduleCandidate.deleteMany({ where: { eventId } });
 
-      // EventMember 関連を削除
       const memberIds = await tx.eventMember.findMany({
         where: { eventId },
         select: { id: true },

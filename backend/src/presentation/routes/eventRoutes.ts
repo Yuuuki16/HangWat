@@ -205,7 +205,11 @@ function parseUserId(value: string): bigint | null {
     return null;
   }
   try {
-    return BigInt(value);
+    const parsed = BigInt(value);
+    if (parsed > maxPostgresBigInt) {
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
