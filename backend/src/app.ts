@@ -38,13 +38,16 @@ export function createApp() {
 
   const commentRepository = new PrismaCommentRepository(prisma);
   const commentService = new CommentService(commentRepository);
-  const eventRepository = new PrismaEventRepository(prisma);
+  const eventRepository = new PrismaEventRepository(
+    prisma,
+    process.env.FRONTEND_ORIGIN ?? "http://localhost:3000",
+  );
   const eventService = new EventService(eventRepository);
   const healthRepository = new PrismaHealthRepository(prisma);
   const healthService = new HealthService(healthRepository);
 
-  app.route("/api", createCommentRoutes(commentService));
   app.route("/api", createEventRoutes(eventService));
+  app.route("/api", createCommentRoutes(commentService));
   app.route("/", createDocsRoutes());
   app.route("/", createHealthRoutes(healthService));
 

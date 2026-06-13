@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { EventListItemDto } from "../src/application/services/eventService.js";
+import { ApplicationError } from "../src/application/errors/applicationError.js";
+import type {
+  EventDetailDto,
+  EventListItemDto,
+  EventService,
+} from "../src/application/services/eventService.js";
 import { createEventRoutes } from "../src/presentation/routes/eventRoutes.js";
 
-type EventRouteService = {
-  listEvents(input: { userId: bigint }): Promise<{ events: EventListItemDto[] }>;
-};
+type EventRouteService = Pick<EventService, "listEvents" | "getEventDetail">;
 
 const sampleEvent: EventListItemDto = {
   id: "1",
@@ -24,79 +27,197 @@ const sampleEvent: EventListItemDto = {
   isConfirmed: false,
 };
 
-function createService(
+const sampleEventDetail: EventDetailDto = {
+  event: {
+    id: "1",
+    title: "梅田で昼ごはん",
+    date: "2026-07-31",
+    location: null,
+    description: null,
+    inviteUrl: null,
+    createdBy: {
+      id: "1",
+      name: "はせたく",
+      avatarUrl: null,
+    },
+    members: [],
+    myMember: {
+      id: "5",
+      eventId: "1",
+      userId: null,
+      displayName: "たくや",
+      role: "member",
+      memberType: "guest",
+      user: null,
+    },
+    confirmedCandidateId: null,
+    createdAt: "2026-07-31T01:00:00.000Z",
+    updatedAt: "2026-07-31T01:00:00.000Z",
+  },
+  candidates: [],
+};
+
+function createRouteService(
   overrides: Partial<EventRouteService> = {},
 ): EventRouteService {
   return {
     async listEvents() {
       return { events: [sampleEvent] };
     },
+    async getEventDetail() {
+      return sampleEventDetail;
+    },
     ...overrides,
   };
 }
 
-async function request(
-  app: ReturnType<typeof createEventRoutes>,
-  path: string,
-  headers: Record<string, string> = {},
-) {
-  const req = new Request(`http://localhost${path}`, { headers });
-  return app.fetch(req);
-}
+describe("eventRoutes", () => {
+  it("returns events", async () => {
+    const app = createEventRoutes(createRouteService());
+    const response = await app.request("/events", {
+      headers: { "x-user-id": "1" },
+    });
 
-describe("GET /events", () => {
-  it("x-user-id が有効な場合 200 とイベント一覧を返す", async () => {
-    const app = createEventRoutes(createService());
-
-    const res = await request(app, "/events", { "x-user-id": "1" });
-    const body = await res.json();
-
-    assert.equal(res.status, 200);
-    assert.deepEqual(body, { events: [sampleEvent] });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { events: [sampleEvent] });
   });
 
-  it("x-user-id がない場合 401 を返す", async () => {
-    const app = createEventRoutes(createService());
+  it("returns 401 without x-user-id", async () => {
+    const app = createEventRoutes(createRouteService());
+    const response = await app.request("/events");
 
-    const res = await request(app, "/events");
-    const body = await res.json();
-
-    assert.equal(res.status, 401);
-    assert.equal(body.error.code, "UNAUTHORIZED");
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "UNAUTHORIZED",
+        message: "認証が必要です",
+      },
+    });
   });
 
-  it("x-user-id が数字でない場合 401 を返す", async () => {
-    const app = createEventRoutes(createService());
+  it("returns 401 with invalid x-user-id", async () => {
+    const app = createEventRoutes(createRouteService());
+    const response = await app.request("/events", {
+      headers: { "x-user-id": "invalid" },
+    });
 
-    const res = await request(app, "/events", { "x-user-id": "invalid" });
-
-    assert.equal(res.status, 401);
+    assert.equal(response.status, 401);
   });
 
-  it("x-user-id が 0 の場合 401 を返す", async () => {
-    const app = createEventRoutes(createService());
-
-    const res = await request(app, "/events", { "x-user-id": "0" });
-
-    assert.equal(res.status, 401);
-  });
-
-  it("service が UNAUTHORIZED を投げた場合 401 を返す", async () => {
-    const { ApplicationError } = await import(
-      "../src/application/errors/applicationError.js"
-    );
+  it("maps list service errors to common error response", async () => {
     const app = createEventRoutes(
-      createService({
+      createRouteService({
         async listEvents() {
           throw new ApplicationError("UNAUTHORIZED", "認証が必要です");
         },
       }),
     );
 
-    const res = await request(app, "/events", { "x-user-id": "999" });
-    const body = await res.json();
+    const response = await app.request("/events", {
+      headers: { "x-user-id": "999" },
+    });
 
-    assert.equal(res.status, 401);
-    assert.equal(body.error.code, "UNAUTHORIZED");
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "UNAUTHORIZED",
+        message: "認証が必要です",
+      },
+    });
+  });
+
+  it("returns event detail", async () => {
+    let receivedInput:
+      | Parameters<EventRouteService["getEventDetail"]>[0]
+      | undefined;
+    const app = createEventRoutes(
+      createRouteService({
+        async getEventDetail(input) {
+          receivedInput = input;
+          return sampleEventDetail;
+        },
+      }),
+    );
+
+    const response = await app.request("/events/1", {
+      headers: { "x-event-member-id": "5" },
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), sampleEventDetail);
+    assert.deepEqual(receivedInput, {
+      eventId: 1n,
+      currentMemberId: 5n,
+    });
+  });
+
+  it("returns 401 without x-event-member-id", async () => {
+    const app = createEventRoutes(createRouteService());
+    const response = await app.request("/events/1");
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "UNAUTHORIZED",
+        message: "認証が必要です",
+      },
+    });
+  });
+
+  it("returns 400 with invalid event id", async () => {
+    const app = createEventRoutes(createRouteService());
+    const response = await app.request("/events/abc", {
+      headers: { "x-event-member-id": "5" },
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "入力内容が正しくありません",
+        details: [{ field: "eventId", message: "eventId が不正です" }],
+      },
+    });
+  });
+
+  it("returns 400 with out-of-range event id", async () => {
+    const app = createEventRoutes(createRouteService());
+    const response = await app.request("/events/9223372036854775808", {
+      headers: { "x-event-member-id": "5" },
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "入力内容が正しくありません",
+        details: [{ field: "eventId", message: "eventId が不正です" }],
+      },
+    });
+  });
+
+  it("maps detail service errors to common error response", async () => {
+    const app = createEventRoutes(
+      createRouteService({
+        async getEventDetail() {
+          throw new ApplicationError(
+            "FORBIDDEN",
+            "このイベントを参照する権限がありません",
+          );
+        },
+      }),
+    );
+
+    const response = await app.request("/events/1", {
+      headers: { "x-event-member-id": "5" },
+    });
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "FORBIDDEN",
+        message: "このイベントを参照する権限がありません",
+      },
+    });
   });
 });

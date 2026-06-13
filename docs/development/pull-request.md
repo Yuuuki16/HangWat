@@ -30,7 +30,7 @@ Pull Request はレビュー可能な単位で作成します。
 ## マージ前チェック
 
 - `pnpm build` が成功する。
-- フロントエンド変更がある場合は `pnpm lint` が成功する。
+- `pnpm lint` が成功する。
 - DB schema 変更がある場合は migration が含まれている。
 - API 変更がある場合は `docs/api-design/` の関連ドキュメントを更新する。
 - README の API Endpoints は概要が変わる場合のみ更新する。
