@@ -18,12 +18,11 @@ backend/src/
   app.ts
   presentation/
     routes/
-    schemas/
+    openapi/
   application/
     services/
-    dto/
+    errors/
   domain/
-    entities/
     repositories/
   infrastructure/
     prisma/
@@ -56,7 +55,7 @@ HTTP の入口です。
 - 画面や API の操作単位に対応する処理
 - repository の呼び出し
 - トランザクション境界の管理
-- DTO と domain object の変換
+- presentation 層から受け取った値をドメイン操作に変換する
 
 禁止:
 

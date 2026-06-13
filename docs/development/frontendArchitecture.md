@@ -285,7 +285,7 @@ app/error.tsx
 
 Next.js の `page.tsx`、`layout.tsx`、`loading.tsx`、`error.tsx` などはフレームワークの規約名を優先します。
 
-動的ルートもディレクトリ名の規則に合わせます。
+動的ルートもディレクトリ名の規則に合わせ、すべて小文字で記述します。
 
 ```txt
 [eventid]
