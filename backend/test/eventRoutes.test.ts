@@ -270,7 +270,7 @@ describe("eventRoutes POST /events", () => {
     assert.ok(body.error.details.some((d: { field: string }) => d.field === "date"));
   });
 
-  it("returns 400 when date is a nonexistent calendar date", async () => {
+  it("returns 400 when date is calendar-invalid", async () => {
     const app = createEventRoutes(createRouteService(), testSessionSecret);
     const cookie = await makeSessionCookie("1");
     const response = await app.request("/events", {
@@ -279,7 +279,7 @@ describe("eventRoutes POST /events", () => {
         "Content-Type": "application/json",
         Cookie: cookie,
       },
-      body: JSON.stringify({ title: "テスト", date: "2026-02-30" }),
+      body: JSON.stringify({ title: "テスト", date: "2026-02-31" }),
     });
 
     assert.equal(response.status, 400);
