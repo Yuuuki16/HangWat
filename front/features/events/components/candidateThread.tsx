@@ -7,12 +7,14 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { mockCandidateComments } from "@/features/events/data/mockCandidateComments";
 import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
 import {
+  deleteCandidateLikes,
   loadLikedCommentIds,
   saveLikedCommentIds,
 } from "@/features/events/utils/commentLikeStorage";
 import {
   cancelCandidateConfirmation,
   confirmCandidate,
+  deleteCandidate,
   loadCandidates,
   saveCandidates,
   sortCandidatesByTime,
@@ -32,6 +34,7 @@ export function CandidateThread({
   const [isLoaded, setIsLoaded] = useState(false);
   const [comment, setComment] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editTime, setEditTime] = useState("");
   const [editLocation, setEditLocation] = useState("");
@@ -63,6 +66,12 @@ export function CandidateThread({
 
   const handleCancelConfirmation = () => {
     cancelCandidateConfirmation(eventId, candidateId);
+    router.push(`/events/${eventId}`);
+  };
+
+  const handleDelete = () => {
+    deleteCandidate(eventId, candidateId);
+    deleteCandidateLikes(eventId, candidateId);
     router.push(`/events/${eventId}`);
   };
 
@@ -193,6 +202,7 @@ export function CandidateThread({
             </button>
             <button
               type="button"
+              onClick={() => setIsDeleteConfirmOpen(true)}
               className="rounded-[10px] bg-danger px-5 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
             >
               削除
@@ -421,6 +431,46 @@ export function CandidateThread({
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {isDeleteConfirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-7 py-10"
+          role="presentation"
+          onMouseDown={() => setIsDeleteConfirmOpen(false)}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="candidate-delete-title"
+            className="w-full max-w-sm rounded-[16px] border-2 border-primary bg-background px-5 py-10 shadow-xl"
+            onMouseDown={(mouseEvent) => mouseEvent.stopPropagation()}
+          >
+            <h2
+              id="candidate-delete-title"
+              className="text-center text-xl text-foreground"
+            >
+              本当に消しますか？
+            </h2>
+
+            <div className="mt-6 flex items-center justify-center gap-7">
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="min-w-24 rounded-[10px] bg-danger px-5 py-2 text-lg text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+              >
+                消す
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                className="min-w-24 rounded-[10px] bg-primary px-4 py-2 text-lg text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                消さない
+              </button>
+            </div>
           </section>
         </div>
       )}

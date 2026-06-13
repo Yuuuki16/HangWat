@@ -80,3 +80,11 @@ export const cancelCandidateConfirmation = (
 
   saveCandidates(eventId, candidates);
 };
+
+export const deleteCandidate = (eventId: string, candidateId: string) => {
+  const candidates = loadCandidates(eventId).filter(
+    (candidate) => candidate.id !== candidateId,
+  );
+
+  saveCandidates(eventId, candidates);
+};

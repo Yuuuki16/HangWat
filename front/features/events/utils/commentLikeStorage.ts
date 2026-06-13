@@ -30,3 +30,10 @@ export const saveLikedCommentIds = (
     JSON.stringify(commentIds),
   );
 };
+
+export const deleteCandidateLikes = (
+  eventId: string,
+  candidateId: string,
+) => {
+  window.localStorage.removeItem(storageKey(eventId, candidateId));
+};
