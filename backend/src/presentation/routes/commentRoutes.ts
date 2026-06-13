@@ -5,6 +5,7 @@ import { ApplicationError } from "../../application/errors/applicationError.js";
 import type { CommentService } from "../../application/services/commentService.js";
 
 const maxCommentBodyLength = 1000;
+const maxPostgresBigInt = 9_223_372_036_854_775_807n;
 
 type CommentRouteService = Pick<
   CommentService,
@@ -232,7 +233,12 @@ function parseId(
   }
 
   try {
-    return { ok: true, value: BigInt(value) };
+    const parsedValue = BigInt(value);
+    if (parsedValue < 1n || parsedValue > maxPostgresBigInt) {
+      return { ok: false, detail: { field, message } };
+    }
+
+    return { ok: true, value: parsedValue };
   } catch {
     return { ok: false, detail: { field, message } };
   }

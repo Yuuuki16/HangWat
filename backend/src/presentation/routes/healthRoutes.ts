@@ -9,6 +9,8 @@ export function createHealthRoutes(healthService: HealthService) {
     return c.json({
       name: "HangWat API",
       endpoints: {
+        comment: "/api/comments/:commentId",
+        comments: "/api/events/:eventId/candidates/:candidateId/comments",
         docs: "/docs",
         health: "/health",
         openapi: "/openapi.json",

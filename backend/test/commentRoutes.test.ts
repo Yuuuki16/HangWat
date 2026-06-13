@@ -161,6 +161,21 @@ describe("commentRoutes", () => {
     });
   });
 
+  it("returns 401 with out-of-range x-event-member-id", async () => {
+    const app = createCommentRoutes(createRouteService());
+    const response = await app.request("/events/1/candidates/10/comments", {
+      headers: { "x-event-member-id": "9223372036854775808" },
+    });
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "UNAUTHORIZED",
+        message: "認証が必要です",
+      },
+    });
+  });
+
   it("returns 400 with invalid path id", async () => {
     const app = createCommentRoutes(createRouteService());
     const response = await app.request("/events/abc/candidates/10/comments", {
@@ -173,6 +188,42 @@ describe("commentRoutes", () => {
         code: "VALIDATION_ERROR",
         message: "入力内容が正しくありません",
         details: [{ field: "eventId", message: "eventId が不正です" }],
+      },
+    });
+  });
+
+  it("returns 400 with out-of-range event id", async () => {
+    const app = createCommentRoutes(createRouteService());
+    const response = await app.request(
+      "/events/9223372036854775808/candidates/10/comments",
+      {
+        headers: { "x-event-member-id": "5" },
+      },
+    );
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "入力内容が正しくありません",
+        details: [{ field: "eventId", message: "eventId が不正です" }],
+      },
+    });
+  });
+
+  it("returns 400 with zero comment id", async () => {
+    const app = createCommentRoutes(createRouteService());
+    const response = await app.request("/comments/0", {
+      method: "DELETE",
+      headers: { "x-event-member-id": "5" },
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "入力内容が正しくありません",
+        details: [{ field: "commentId", message: "commentId が不正です" }],
       },
     });
   });
