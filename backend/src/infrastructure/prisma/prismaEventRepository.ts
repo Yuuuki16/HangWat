@@ -2,6 +2,8 @@ import type { PrismaClient } from "@prisma/client";
 
 import type {
   EventCandidateRecord,
+  EventCreateInput,
+  EventCreatedRecord,
   EventDetailRecord,
   EventListRecord,
   EventLocationRecord,
@@ -82,7 +84,7 @@ export class PrismaEventRepository implements EventRepository {
   async findUserById(userId: bigint) {
     return this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
   }
 
@@ -110,6 +112,73 @@ export class PrismaEventRepository implements EventRepository {
       memberCount: event._count.members,
       confirmedCandidateId: event.confirmedCandidateId,
     }));
+  }
+
+  async createEvent(input: EventCreateInput): Promise<EventCreatedRecord> {
+    const result = await this.prisma.$transaction(async (tx) => {
+      let locationId: bigint | null = null;
+      if (input.location !== null) {
+        const location = await tx.location.create({
+          data: {
+            name: input.location.name,
+            address: input.location.address,
+            googlePlaceId: input.location.googlePlaceId,
+            latitude: input.location.latitude,
+            longitude: input.location.longitude,
+            googleMapsUrl: input.location.googleMapsUrl,
+          },
+        });
+        locationId = location.id;
+      }
+
+      const event = await tx.event.create({
+        data: {
+          createdByUserId: input.userId,
+          locationId,
+          title: input.title,
+          eventDate: input.eventDate,
+          description: input.description,
+        },
+        select: {
+          id: true,
+          title: true,
+          eventDate: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      const user = await tx.user.findUniqueOrThrow({
+        where: { id: input.userId },
+        select: { name: true },
+      });
+
+      const member = await tx.eventMember.create({
+        data: {
+          eventId: event.id,
+          userId: input.userId,
+          displayName: user.name,
+          role: "OWNER",
+        },
+        select: this.memberSelect(),
+      });
+
+      return { event, member };
+    });
+
+    return {
+      id: result.event.id,
+      title: result.event.title,
+      eventDate: result.event.eventDate,
+      location: input.location,
+      description: result.event.description,
+      inviteUrl: null,
+      confirmedCandidateId: null,
+      myMember: this.toEventMemberRecord(result.member),
+      createdAt: result.event.createdAt,
+      updatedAt: result.event.updatedAt,
+    };
   }
 
   async findEventMemberById(eventMemberId: bigint) {

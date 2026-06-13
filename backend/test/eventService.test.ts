@@ -7,6 +7,8 @@ import {
 } from "../src/application/errors/applicationError.js";
 import { EventService } from "../src/application/services/eventService.js";
 import type {
+  EventCreateInput,
+  EventCreatedRecord,
   EventDetailRecord,
   EventListRecord,
   EventMemberRecord,
@@ -14,10 +16,15 @@ import type {
 } from "../src/domain/repositories/eventRepository.js";
 
 class FakeEventRepository implements EventRepository {
-  readonly users = new Map<string, { id: bigint }>();
+  readonly users = new Map<string, { id: bigint; name: string }>();
   readonly eventsByUserId = new Map<string, EventListRecord[]>();
   readonly eventMembers = new Map<string, EventMemberRecord>();
   readonly events = new Map<string, EventDetailRecord>();
+  readonly createdEvents: EventCreatedRecord[] = [];
+
+  async findUserById(userId: bigint) {
+    return this.users.get(key(userId)) ?? null;
+  }
 
   async findUserById(userId: bigint) {
     return this.users.get(key(userId)) ?? null;
@@ -33,6 +40,42 @@ class FakeEventRepository implements EventRepository {
 
   async findEventDetailById(eventId: bigint) {
     return this.events.get(key(eventId)) ?? null;
+  }
+
+  async createEvent(input: EventCreateInput): Promise<EventCreatedRecord> {
+    const user = this.users.get(key(input.userId));
+    if (user === undefined) {
+      throw new Error("user not found");
+    }
+
+    const eventId = BigInt(this.createdEvents.length + 100);
+    const memberId = BigInt(this.createdEvents.length + 200);
+    const now = new Date("2026-07-31T01:00:00.000Z");
+
+    const myMember: EventMemberRecord = {
+      id: memberId,
+      eventId,
+      userId: input.userId,
+      displayName: user.name,
+      role: "OWNER",
+      user: { id: user.id, name: user.name, avatarUrl: null },
+    };
+
+    const record: EventCreatedRecord = {
+      id: eventId,
+      title: input.title,
+      eventDate: input.eventDate,
+      location: input.location,
+      description: input.description,
+      inviteUrl: null,
+      confirmedCandidateId: null,
+      myMember,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.createdEvents.push(record);
+    return record;
   }
 }
 
@@ -51,6 +94,82 @@ const sampleEvent: EventListRecord = {
   memberCount: 2,
   confirmedCandidateId: null,
 };
+
+describe("EventService.createEvent", () => {
+  it("creates event and returns dto", async () => {
+    const repository = new FakeEventRepository();
+    repository.users.set("1", { id: 1n, name: "はせたく" });
+    const service = new EventService(repository);
+
+    const result = await service.createEvent({
+      userId: 1n,
+      title: "梅田で昼ごはん",
+      date: "2026-07-31",
+      location: {
+        name: "大阪駅",
+        address: "大阪府大阪市北区梅田3丁目1-1",
+        googlePlaceId: "ChIJxxxxxxxxxxxx",
+        latitude: 34.702485,
+        longitude: 135.495951,
+        googleMapsUrl: "https://www.google.com/maps/place/osaka",
+      },
+      description: "昼ごはん候補を決める",
+    });
+
+    assert.equal(result.event.title, "梅田で昼ごはん");
+    assert.equal(result.event.date, "2026-07-31");
+    assert.equal(result.event.description, "昼ごはん候補を決める");
+    assert.equal(result.event.inviteUrl, null);
+    assert.equal(result.event.confirmedCandidateId, null);
+    assert.equal(result.event.myMember.role, "owner");
+    assert.equal(result.event.myMember.displayName, "はせたく");
+    assert.equal(result.event.myMember.userId, "1");
+    assert.deepEqual(result.event.location, {
+      name: "大阪駅",
+      address: "大阪府大阪市北区梅田3丁目1-1",
+      googlePlaceId: "ChIJxxxxxxxxxxxx",
+      latitude: 34.702485,
+      longitude: 135.495951,
+      googleMapsUrl: "https://www.google.com/maps/place/osaka",
+    });
+  });
+
+  it("creates event with optional fields omitted", async () => {
+    const repository = new FakeEventRepository();
+    repository.users.set("1", { id: 1n, name: "はせたく" });
+    const service = new EventService(repository);
+
+    const result = await service.createEvent({
+      userId: 1n,
+      title: "ミーティング",
+      date: null,
+      location: null,
+      description: null,
+    });
+
+    assert.equal(result.event.title, "ミーティング");
+    assert.equal(result.event.date, null);
+    assert.equal(result.event.location, null);
+    assert.equal(result.event.description, null);
+  });
+
+  it("rejects unknown user as unauthorized", async () => {
+    const repository = new FakeEventRepository();
+    const service = new EventService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.createEvent({
+          userId: 999n,
+          title: "テスト",
+          date: null,
+          location: null,
+          description: null,
+        }),
+      "UNAUTHORIZED",
+    );
+  });
+});
 
 describe("EventService", () => {
   describe("listEvents", () => {
@@ -275,6 +394,8 @@ describe("EventService", () => {
 
 function createRepository(): FakeEventRepository {
   const repository = new FakeEventRepository();
+  repository.users.set("1", { id: 1n, name: "はせたく" });
+
   const guestMember: EventMemberRecord = {
     id: 5n,
     eventId: 1n,

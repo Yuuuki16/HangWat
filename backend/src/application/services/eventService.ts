@@ -9,6 +9,21 @@ import type {
   EventRepository,
 } from "../../domain/repositories/eventRepository.js";
 
+export type EventCreatedDto = {
+  event: {
+    id: string;
+    title: string;
+    date: string | null;
+    location: LocationDto | null;
+    description: string | null;
+    inviteUrl: null;
+    confirmedCandidateId: null;
+    myMember: EventMemberDto;
+    createdAt: string;
+    updatedAt: string;
+  };
+};
+
 type LocationDto = {
   name: string;
   address: string | null;
@@ -90,6 +105,44 @@ export class EventService {
 
     const events = await this.eventRepository.findEventsByUserId(input.userId);
     return { events: events.map((event) => this.toEventListItemDto(event)) };
+  }
+
+  async createEvent(input: {
+    userId: bigint;
+    title: string;
+    date: string | null;
+    location: EventLocationRecord | null;
+    description: string | null;
+  }): Promise<EventCreatedDto> {
+    const user = await this.eventRepository.findUserById(input.userId);
+    if (user === null) {
+      throw new ApplicationError("UNAUTHORIZED", "認証が必要です");
+    }
+
+    const eventDate = input.date === null ? null : new Date(input.date);
+
+    const event = await this.eventRepository.createEvent({
+      userId: input.userId,
+      title: input.title,
+      eventDate,
+      location: input.location,
+      description: input.description,
+    });
+
+    return {
+      event: {
+        id: event.id.toString(),
+        title: event.title,
+        date: event.eventDate === null ? null : formatDate(event.eventDate),
+        location: toLocationDto(event.location),
+        description: event.description,
+        inviteUrl: null,
+        confirmedCandidateId: null,
+        myMember: toEventMemberDto(event.myMember),
+        createdAt: event.createdAt.toISOString(),
+        updatedAt: event.updatedAt.toISOString(),
+      },
+    };
   }
 
   async getEventDetail(input: {

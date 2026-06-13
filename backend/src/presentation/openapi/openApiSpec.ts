@@ -207,6 +207,38 @@ export const openApiSpec = {
           "500": { $ref: "#/components/responses/InternalServerError" },
         },
       },
+      post: {
+        summary: "Create a new event",
+        tags: ["Event"],
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateEventRequest" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created event",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["event"],
+                  properties: {
+                    event: { $ref: "#/components/schemas/CreatedEvent" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
     },
     "/api/events/{eventId}": {
       get: {
@@ -939,6 +971,76 @@ export const openApiSpec = {
             type: ["string", "null"],
             maxLength: 1000,
             example: "梅田の一蘭に行く案",
+          },
+        },
+      },
+      CreateEventRequest: {
+        type: "object",
+        required: ["title"],
+        properties: {
+          title: {
+            type: "string",
+            minLength: 1,
+            maxLength: 100,
+            example: "梅田で昼ごはん",
+          },
+          date: {
+            type: ["string", "null"],
+            format: "date",
+            example: "2026-07-31",
+          },
+          location: {
+            oneOf: [
+              { $ref: "#/components/schemas/Location" },
+              { type: "null" },
+            ],
+          },
+          description: {
+            type: ["string", "null"],
+            maxLength: 1000,
+            example: "昼ごはん候補を決める",
+          },
+        },
+      },
+      CreatedEvent: {
+        type: "object",
+        required: [
+          "id",
+          "title",
+          "date",
+          "location",
+          "description",
+          "inviteUrl",
+          "confirmedCandidateId",
+          "myMember",
+          "createdAt",
+          "updatedAt",
+        ],
+        properties: {
+          id: { $ref: "#/components/schemas/BigIntId" },
+          title: { type: "string", example: "梅田で昼ごはん" },
+          date: {
+            type: ["string", "null"],
+            format: "date",
+            example: "2026-07-31",
+          },
+          location: { $ref: "#/components/schemas/Location" },
+          description: {
+            type: ["string", "null"],
+            example: "昼ごはん候補を決める",
+          },
+          inviteUrl: { type: "null", example: null },
+          confirmedCandidateId: { type: "null", example: null },
+          myMember: { $ref: "#/components/schemas/EventMember" },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-07-31T10:00:00.000Z",
+          },
+          updatedAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-07-31T10:00:00.000Z",
           },
         },
       },
