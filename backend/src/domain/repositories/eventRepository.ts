@@ -10,6 +10,15 @@ export type EventLocationRecord = {
   googleMapsUrl: string | null;
 };
 
+export type EventListRecord = {
+  id: bigint;
+  title: string;
+  eventDate: Date | null;
+  location: EventLocationRecord | null;
+  memberCount: number;
+  confirmedCandidateId: bigint | null;
+};
+
 export type EventUserRecord = {
   id: bigint;
   name: string;
@@ -56,7 +65,56 @@ export type EventDetailRecord = {
   updatedAt: Date;
 };
 
+export type EventCreateInput = {
+  userId: bigint;
+  title: string;
+  eventDate: Date | null;
+  location: EventLocationRecord | null;
+  description: string | null;
+};
+
+export type EventCreatedRecord = {
+  id: bigint;
+  title: string;
+  eventDate: Date | null;
+  location: EventLocationRecord | null;
+  description: string | null;
+  inviteUrl: null;
+  confirmedCandidateId: null;
+  myMember: EventMemberRecord;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type EventUpdateInput = {
+  eventId: bigint;
+  title: string;
+  eventDate: Date | null;
+  location: EventLocationRecord | null;
+  description: string | null;
+};
+
+export type EventUpdatedRecord = {
+  id: bigint;
+  title: string;
+  eventDate: Date | null;
+  location: EventLocationRecord | null;
+  description: string | null;
+  updatedAt: Date;
+};
+
+export class EventUserNotFoundError extends Error {}
+
 export interface EventRepository {
+  findUserById(userId: bigint): Promise<{ id: bigint; name: string } | null>;
+  findEventsByUserId(userId: bigint): Promise<EventListRecord[]>;
   findEventMemberById(eventMemberId: bigint): Promise<EventMemberRecord | null>;
+  findEventMemberByUserAndEvent(
+    eventId: bigint,
+    userId: bigint,
+  ): Promise<EventMemberRecord | null>;
   findEventDetailById(eventId: bigint): Promise<EventDetailRecord | null>;
+  createEvent(input: EventCreateInput): Promise<EventCreatedRecord>;
+  updateEvent(input: EventUpdateInput): Promise<EventUpdatedRecord>;
+  deleteEvent(eventId: bigint): Promise<void>;
 }

@@ -30,14 +30,41 @@ body {
   font-family: var(--font-inter), sans-serif;
 }
 
+.candidate-time-input {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
 .candidate-time-input:invalid {
   color: color-mix(in srgb, var(--foreground) 55%, transparent);
 }
 
 .candidate-time-input:valid {
   color: var(--foreground);
+  -webkit-text-fill-color: var(--foreground);
 }
 
 .candidate-time-input::-webkit-calendar-picker-indicator {
+  display: none;
   opacity: 0;
+  -webkit-appearance: none;
+}
+
+@keyframes like-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.35) rotate(-8deg);
+  }
+  75% {
+    transform: scale(0.92) rotate(4deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.like-pop {
+  animation: like-pop 360ms ease-out;
 }

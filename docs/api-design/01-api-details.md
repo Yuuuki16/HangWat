@@ -1153,11 +1153,11 @@ Response Body
 ```json
 {
   "candidate": {
-    "id": "candidate_001",
-    "eventId": "event_001",
+    "id": "10",
+    "eventId": "1",
     "title": "一蘭で昼ごはん",
-    "startAt": "2026-07-31T13:00:00+09:00",
-    "endAt": "2026-07-31T14:00:00+09:00",
+    "startAt": "2026-07-31T04:00:00.000Z",
+    "endAt": "2026-07-31T05:00:00.000Z",
     "location": {
       "name": "一蘭 梅田店",
       "address": "大阪府大阪市北区...",
@@ -1169,14 +1169,14 @@ Response Body
     "description": "梅田の一蘭に行く案",
     "status": "pending",
     "createdByMember": {
-      "id": "member_010",
+      "id": "5",
       "displayName": "たくや",
       "memberType": "guest"
     },
     "commentCount": 0,
     "likeCount": 0,
-    "createdAt": "2026-07-31T10:00:00+09:00",
-    "updatedAt": "2026-07-31T10:00:00+09:00"
+    "createdAt": "2026-07-31T10:00:00.000Z",
+    "updatedAt": "2026-07-31T10:00:00.000Z"
   }
 }
 ```
@@ -1232,11 +1232,11 @@ Response Body
 ```json
 {
   "candidate": {
-    "id": "candidate_001",
-    "eventId": "event_001",
+    "id": "10",
+    "eventId": "1",
     "title": "一蘭で昼ごはん",
-    "startAt": "2026-07-31T13:30:00+09:00",
-    "endAt": "2026-07-31T14:30:00+09:00",
+    "startAt": "2026-07-31T04:30:00.000Z",
+    "endAt": "2026-07-31T05:30:00.000Z",
     "location": {
       "name": "一蘭 梅田店",
       "address": "大阪府大阪市北区...",
@@ -1247,7 +1247,15 @@ Response Body
     },
     "description": "開始時間を変更",
     "status": "pending",
-    "updatedAt": "2026-07-31T10:30:00+09:00"
+    "createdByMember": {
+      "id": "5",
+      "displayName": "たくや",
+      "memberType": "guest"
+    },
+    "commentCount": 0,
+    "likeCount": 0,
+    "createdAt": "2026-07-31T10:00:00.000Z",
+    "updatedAt": "2026-07-31T10:30:00.000Z"
   }
 }
 ```
@@ -1295,6 +1303,7 @@ Error
 
 | Status | Code | 説明 |
 | --- | --- | --- |
+| 400 | VALIDATION_ERROR | 入力値が不正 |
 | 401 | UNAUTHORIZED | 未ログイン、またはローカルトークンが不正 |
 | 403 | FORBIDDEN | 削除権限がない |
 | 404 | NOT_FOUND | イベントまたは予定候補が存在しない |
