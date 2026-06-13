@@ -4,6 +4,7 @@ RUN apk add --no-cache openssl
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json backend/package.json
+COPY front/package.json front/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
@@ -20,6 +21,7 @@ RUN ["apk", "upgrade", "--no-cache", "openssl", "libssl3", "libcrypto3"]
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json backend/package.json
+COPY front/package.json front/package.json
 COPY backend/prisma backend/prisma
 RUN pnpm install --frozen-lockfile --prod --filter backend
 RUN pnpm --filter backend prisma generate
