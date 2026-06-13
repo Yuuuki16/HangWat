@@ -10,6 +10,7 @@ export type ScheduleCandidateEventMember = {
 
 export type ScheduleCandidateEvent = {
   id: bigint;
+  confirmedCandidateId: bigint | null;
 };
 
 export type ScheduleCandidateLocationInput = {
@@ -72,4 +73,5 @@ export interface ScheduleCandidateRepository {
     location: ScheduleCandidateLocationInput | null;
     description: string | null;
   }): Promise<ScheduleCandidateRecord>;
+  deleteScheduleCandidateById(candidateId: bigint): Promise<void>;
 }

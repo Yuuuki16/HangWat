@@ -328,6 +328,39 @@ export const openApiSpec = {
           "500": { $ref: "#/components/responses/InternalServerError" },
         },
       },
+      delete: {
+        summary: "Delete a schedule candidate",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/CandidateId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Deleted schedule candidate",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["message"],
+                  properties: {
+                    message: {
+                      type: "string",
+                      example: "予定候補を削除しました",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "409": { $ref: "#/components/responses/Conflict" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
     },
     "/api/events/{eventId}/candidates/{candidateId}/comments": {
       get: {
