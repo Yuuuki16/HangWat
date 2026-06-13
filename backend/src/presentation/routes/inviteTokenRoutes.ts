@@ -2,14 +2,13 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 
 import { ApplicationError } from "../../application/errors/applicationError.js";
-import type { EventMemberService } from "../../application/services/eventMemberService.js";
+import type { InviteTokenService } from "../../application/services/inviteTokenService.js";
 
 const maxPostgresBigInt = 9_223_372_036_854_775_807n;
-const maxDisplayNameLength = 50;
 
-type EventMemberRouteService = Pick<
-  EventMemberService,
-  "listMembers" | "getMyMember" | "updateDisplayName" | "deleteMember"
+type InviteTokenRouteService = Pick<
+  InviteTokenService,
+  "createInviteToken" | "revokeInviteToken"
 >;
 
 type ValidationDetail = {
@@ -25,12 +24,12 @@ type ErrorCode =
   | "CONFLICT"
   | "INTERNAL_SERVER_ERROR";
 
-export function createEventMemberRoutes(
-  eventMemberService: EventMemberRouteService,
+export function createInviteTokenRoutes(
+  inviteTokenService: InviteTokenRouteService,
 ) {
   const app = new Hono();
 
-  app.get("/events/:eventId/members", async (c) => {
+  app.post("/events/:eventId/invite-tokens", async (c) => {
     const eventId = parseId(
       c.req.param("eventId"),
       "eventId",
@@ -47,19 +46,39 @@ export function createEventMemberRoutes(
       return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
     }
 
+    let body: unknown;
     try {
-      const members = await eventMemberService.listMembers({
+      body = await c.req.json();
+    } catch {
+      return validationError(c, [
+        { field: "body", message: "リクエストボディが正しくありません" },
+      ]);
+    }
+
+    if (!isObject(body)) {
+      return validationError(c, [
+        { field: "body", message: "リクエストボディが正しくありません" },
+      ]);
+    }
+
+    const expiresAt = parseExpiresAt(body.expiresAt);
+    if (!expiresAt.ok) {
+      return validationError(c, [expiresAt.detail]);
+    }
+
+    try {
+      const result = await inviteTokenService.createInviteToken({
         eventId: eventId.value,
         currentMemberId: currentMemberId.value,
+        expiresAt: expiresAt.value,
       });
-
-      return c.json({ members });
+      return c.json(result, 201);
     } catch (error) {
       return handleRouteError(c, error);
     }
   });
 
-  app.get("/events/:eventId/me/member", async (c) => {
+  app.delete("/events/:eventId/invite-tokens/:tokenId", async (c) => {
     const eventId = parseId(
       c.req.param("eventId"),
       "eventId",
@@ -67,6 +86,15 @@ export function createEventMemberRoutes(
     );
     if (!eventId.ok) {
       return validationError(c, [eventId.detail]);
+    }
+
+    const tokenId = parseId(
+      c.req.param("tokenId"),
+      "tokenId",
+      "tokenId が不正です",
+    );
+    if (!tokenId.ok) {
+      return validationError(c, [tokenId.detail]);
     }
 
     const currentMemberId = validateCurrentMemberHeader(
@@ -77,110 +105,12 @@ export function createEventMemberRoutes(
     }
 
     try {
-      const eventMember = await eventMemberService.getMyMember({
+      await inviteTokenService.revokeInviteToken({
         eventId: eventId.value,
+        tokenId: tokenId.value,
         currentMemberId: currentMemberId.value,
       });
-
-      return c.json({ eventMember });
-    } catch (error) {
-      return handleRouteError(c, error);
-    }
-  });
-
-  app.patch("/events/:eventId/members/:memberId", async (c) => {
-    const eventId = parseId(
-      c.req.param("eventId"),
-      "eventId",
-      "eventId が不正です",
-    );
-    if (!eventId.ok) {
-      return validationError(c, [eventId.detail]);
-    }
-
-    const memberId = parseId(
-      c.req.param("memberId"),
-      "memberId",
-      "memberId が不正です",
-    );
-    if (!memberId.ok) {
-      return validationError(c, [memberId.detail]);
-    }
-
-    const currentMemberId = validateCurrentMemberHeader(
-      c.req.header("x-event-member-id"),
-    );
-    if (!currentMemberId.ok) {
-      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
-    }
-
-    const body = await c.req.json().catch(() => null);
-    const displayName =
-      typeof body?.displayName === "string"
-        ? body.displayName.trim()
-        : undefined;
-
-    const details: ValidationDetail[] = [];
-    if (displayName === undefined || displayName.length === 0) {
-      details.push({ field: "displayName", message: "表示名は必須です" });
-    } else if (displayName.length > maxDisplayNameLength) {
-      details.push({
-        field: "displayName",
-        message: `表示名は${maxDisplayNameLength}文字以内で入力してください`,
-      });
-    }
-    if (details.length > 0) {
-      return validationError(c, details);
-    }
-
-    try {
-      const eventMember = await eventMemberService.updateDisplayName({
-        eventId: eventId.value,
-        memberId: memberId.value,
-        currentMemberId: currentMemberId.value,
-        displayName: displayName as string,
-      });
-
-      return c.json({ eventMember });
-    } catch (error) {
-      return handleRouteError(c, error);
-    }
-  });
-
-  app.delete("/events/:eventId/members/:memberId", async (c) => {
-    const eventId = parseId(
-      c.req.param("eventId"),
-      "eventId",
-      "eventId が不正です",
-    );
-    if (!eventId.ok) {
-      return validationError(c, [eventId.detail]);
-    }
-
-    const memberId = parseId(
-      c.req.param("memberId"),
-      "memberId",
-      "memberId が不正です",
-    );
-    if (!memberId.ok) {
-      return validationError(c, [memberId.detail]);
-    }
-
-    const currentMemberId = validateCurrentMemberHeader(
-      c.req.header("x-event-member-id"),
-    );
-    if (!currentMemberId.ok) {
-      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
-    }
-
-    try {
-      await eventMemberService.deleteMember({
-        eventId: eventId.value,
-        memberId: memberId.value,
-        currentMemberId: currentMemberId.value,
-      });
-
-      return c.json({ message: "イベントメンバーを削除しました" });
+      return c.json({ message: "招待URLを無効化しました" }, 200);
     } catch (error) {
       return handleRouteError(c, error);
     }
@@ -200,7 +130,6 @@ function validateCurrentMemberHeader(
   if (!parsed.ok) {
     return { ok: false };
   }
-
   return { ok: true, value: parsed.value };
 }
 
@@ -208,23 +137,45 @@ function parseId(
   value: string | undefined,
   field: string,
   message: string,
-):
-  | { ok: true; value: bigint }
-  | { ok: false; detail: ValidationDetail } {
+): { ok: true; value: bigint } | { ok: false; detail: ValidationDetail } {
   if (value === undefined || !/^\d+$/.test(value)) {
     return { ok: false, detail: { field, message } };
   }
-
   try {
     const parsedValue = BigInt(value);
     if (parsedValue < 1n || parsedValue > maxPostgresBigInt) {
       return { ok: false, detail: { field, message } };
     }
-
     return { ok: true, value: parsedValue };
   } catch {
     return { ok: false, detail: { field, message } };
   }
+}
+
+function parseExpiresAt(
+  value: unknown,
+): { ok: true; value: Date } | { ok: false; detail: ValidationDetail } {
+  if (typeof value !== "string" || value.length === 0) {
+    return {
+      ok: false,
+      detail: { field: "expiresAt", message: "expiresAt は必須です" },
+    };
+  }
+  const date = new Date(value);
+  if (isNaN(date.getTime())) {
+    return {
+      ok: false,
+      detail: {
+        field: "expiresAt",
+        message: "expiresAt は有効な日時形式で指定してください",
+      },
+    };
+  }
+  return { ok: true, value: date };
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function handleRouteError(c: Context, error: unknown) {
@@ -237,7 +188,6 @@ function handleRouteError(c: Context, error: unknown) {
         CONFLICT: 409,
       };
     const status = statusByCode[error.code];
-
     return errorResponse(c, error.code, error.message, status);
   }
 

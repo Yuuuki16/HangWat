@@ -12,5 +12,28 @@ export function HeaderGate() {
     return null;
   }
 
-  return <Header />;
+  if (pathname === "/home") {
+    return <Header />;
+  }
+
+  if (/^\/invite\/[^/]+$/.test(pathname)) {
+    return <Header showProfile={false} />;
+  }
+
+  const slotRouteMatch = pathname.match(
+    /^\/events\/([^/]+)\/slots\/[^/]+$/,
+  );
+
+  if (slotRouteMatch) {
+    return (
+      <Header
+        backLink={{
+          href: `/events/${slotRouteMatch[1]}`,
+          label: "イベントへ",
+        }}
+      />
+    );
+  }
+
+  return <Header backLink={{ href: "/home", label: "ホームへ" }} />;
 }
