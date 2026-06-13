@@ -3,9 +3,9 @@ import { SignupPrompt } from "@/features/auth/components/signupPrompt";
 
 export default function LoginPage() {
   return (
-    <main className="flex flex-1 flex-col items-center px-6 pb-20 pt-24">
-      <div className="flex w-full max-w-md flex-col gap-6">
-        <h1 className="text-center font-title text-7xl leading-[1.9] text-primary drop-shadow-[0_4px_3px_rgb(0_0_0/0.18)]">
+    <main className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+      <div className="flex w-full max-w-md flex-col gap-8">
+        <h1 className="text-center font-title text-7xl leading-tight text-primary drop-shadow-[0_4px_3px_rgb(0_0_0/0.18)]">
           HangWat
         </h1>
         <p className="text-center text-2xl font-semibold tracking-[0.04em] text-foreground">
@@ -13,11 +13,11 @@ export default function LoginPage() {
         </p>
       </div>
 
-      <div className="mt-24 w-full max-w-md">
+      <div className="mt-12 w-full max-w-md">
         <LoginForm />
       </div>
 
-      <div className="mt-auto w-full max-w-md pt-16">
+      <div className="mt-14 w-full max-w-md">
         <SignupPrompt description="新規の方は" linkLabel="こちら" href="/signup" />
       </div>
     </main>

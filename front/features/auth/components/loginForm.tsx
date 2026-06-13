@@ -13,12 +13,13 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-12">
+    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-8">
       <AuthFormField
         id="login-email"
         name="email"
         type="email"
         label="メールアドレス"
+        placeholder="example@email.com"
         autoComplete="email"
         required
         value={email}
@@ -30,6 +31,7 @@ export function LoginForm() {
         name="password"
         type="password"
         label="パスワード"
+        placeholder="8文字以上で入力"
         autoComplete="current-password"
         required
         value={password}
@@ -41,6 +43,7 @@ export function LoginForm() {
         name="username"
         type="text"
         label="ユーザーネーム"
+        placeholder="yamada_taro"
         autoComplete="username"
         required
         value={username}
