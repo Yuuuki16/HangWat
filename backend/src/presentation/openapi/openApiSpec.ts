@@ -468,6 +468,77 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/events/{eventId}/members/{memberId}": {
+      patch: {
+        summary: "Update event member display name",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/MemberId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/PatchEventMemberRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated event member",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["eventMember"],
+                  properties: {
+                    eventMember: {
+                      $ref: "#/components/schemas/UpdatedEventMember",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "409": { $ref: "#/components/responses/Conflict" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+      delete: {
+        summary: "Delete or leave event member",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/MemberId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Event member deleted",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["message"],
+                  properties: {
+                    message: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "409": { $ref: "#/components/responses/Conflict" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/api/events/{eventId}/candidates": {
       post: {
         summary: "Create a schedule candidate",
@@ -756,6 +827,12 @@ export const openApiSpec = {
         required: true,
         schema: { $ref: "#/components/schemas/BigIntId" },
       },
+      MemberId: {
+        name: "memberId",
+        in: "path",
+        required: true,
+        schema: { $ref: "#/components/schemas/BigIntId" },
+      },
       CommentId: {
         name: "commentId",
         in: "path",
@@ -995,6 +1072,46 @@ export const openApiSpec = {
             enum: ["user", "guest"],
             example: "guest",
           },
+        },
+      },
+      UpdatedEventMember: {
+        type: "object",
+        required: [
+          "id",
+          "eventId",
+          "userId",
+          "displayName",
+          "role",
+          "memberType",
+          "updatedAt",
+        ],
+        properties: {
+          id: { $ref: "#/components/schemas/BigIntId" },
+          eventId: { $ref: "#/components/schemas/BigIntId" },
+          userId: {
+            type: ["string", "null"],
+            pattern: "^[1-9][0-9]*$",
+            example: null,
+          },
+          displayName: { type: "string", example: "たくや" },
+          role: {
+            type: "string",
+            enum: ["owner", "member"],
+            example: "member",
+          },
+          memberType: {
+            type: "string",
+            enum: ["user", "guest"],
+            example: "guest",
+          },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      PatchEventMemberRequest: {
+        type: "object",
+        required: ["displayName"],
+        properties: {
+          displayName: { type: "string", example: "たくや" },
         },
       },
       EventListItem: {

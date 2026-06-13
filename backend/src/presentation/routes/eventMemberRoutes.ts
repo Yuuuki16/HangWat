@@ -5,10 +5,11 @@ import { ApplicationError } from "../../application/errors/applicationError.js";
 import type { EventMemberService } from "../../application/services/eventMemberService.js";
 
 const maxPostgresBigInt = 9_223_372_036_854_775_807n;
+const maxDisplayNameLength = 50;
 
 type EventMemberRouteService = Pick<
   EventMemberService,
-  "listMembers" | "getMyMember"
+  "listMembers" | "getMyMember" | "updateDisplayName" | "deleteMember"
 >;
 
 type ValidationDetail = {
@@ -82,6 +83,104 @@ export function createEventMemberRoutes(
       });
 
       return c.json({ eventMember });
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.patch("/events/:eventId/members/:memberId", async (c) => {
+    const eventId = parseId(
+      c.req.param("eventId"),
+      "eventId",
+      "eventId が不正です",
+    );
+    if (!eventId.ok) {
+      return validationError(c, [eventId.detail]);
+    }
+
+    const memberId = parseId(
+      c.req.param("memberId"),
+      "memberId",
+      "memberId が不正です",
+    );
+    if (!memberId.ok) {
+      return validationError(c, [memberId.detail]);
+    }
+
+    const currentMemberId = validateCurrentMemberHeader(
+      c.req.header("x-event-member-id"),
+    );
+    if (!currentMemberId.ok) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const displayName =
+      typeof body?.displayName === "string"
+        ? body.displayName.trim()
+        : undefined;
+
+    const details: ValidationDetail[] = [];
+    if (displayName === undefined || displayName.length === 0) {
+      details.push({ field: "displayName", message: "表示名は必須です" });
+    } else if (displayName.length > maxDisplayNameLength) {
+      details.push({
+        field: "displayName",
+        message: `表示名は${maxDisplayNameLength}文字以内で入力してください`,
+      });
+    }
+    if (details.length > 0) {
+      return validationError(c, details);
+    }
+
+    try {
+      const eventMember = await eventMemberService.updateDisplayName({
+        eventId: eventId.value,
+        memberId: memberId.value,
+        currentMemberId: currentMemberId.value,
+        displayName: displayName as string,
+      });
+
+      return c.json({ eventMember });
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.delete("/events/:eventId/members/:memberId", async (c) => {
+    const eventId = parseId(
+      c.req.param("eventId"),
+      "eventId",
+      "eventId が不正です",
+    );
+    if (!eventId.ok) {
+      return validationError(c, [eventId.detail]);
+    }
+
+    const memberId = parseId(
+      c.req.param("memberId"),
+      "memberId",
+      "memberId が不正です",
+    );
+    if (!memberId.ok) {
+      return validationError(c, [memberId.detail]);
+    }
+
+    const currentMemberId = validateCurrentMemberHeader(
+      c.req.header("x-event-member-id"),
+    );
+    if (!currentMemberId.ok) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    try {
+      await eventMemberService.deleteMember({
+        eventId: eventId.value,
+        memberId: memberId.value,
+        currentMemberId: currentMemberId.value,
+      });
+
+      return c.json({ message: "イベントメンバーを削除しました" });
     } catch (error) {
       return handleRouteError(c, error);
     }
