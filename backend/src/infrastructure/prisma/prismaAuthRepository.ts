@@ -40,6 +40,20 @@ export class PrismaAuthRepository implements AuthRepository {
     return user satisfies AuthUser;
   }
 
+  async findUserById(id: bigint) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+      },
+    });
+
+    return user satisfies AuthUser | null;
+  }
+
   async findCredentialByEmail(email: string) {
     const user = await this.prisma.user.findUnique({
       where: { email },

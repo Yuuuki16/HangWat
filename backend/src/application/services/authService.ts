@@ -63,6 +63,15 @@ export class AuthService {
     return this.toUserDto(credential);
   }
 
+  async getCurrentUser(userId: bigint): Promise<AuthUserDto> {
+    const user = await this.authRepository.findUserById(userId);
+    if (user === null) {
+      throw new ApplicationError("UNAUTHORIZED", "ログインが必要です");
+    }
+
+    return this.toUserDto(user);
+  }
+
   private toUserDto(user: AuthUser): AuthUserDto {
     return {
       id: user.id.toString(),

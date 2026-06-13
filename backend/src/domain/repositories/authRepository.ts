@@ -11,6 +11,7 @@ export type AuthUserCredential = AuthUser & {
 
 export interface AuthRepository {
   findUserByEmail(email: string): Promise<{ id: bigint } | null>;
+  findUserById(id: bigint): Promise<AuthUser | null>;
   createUser(input: {
     name: string;
     email: string;

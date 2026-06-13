@@ -14,7 +14,10 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const sessionCookieName = "session_token";
 const sessionCookieMaxAgeSeconds = 60 * 60 * 24 * 30;
 
-type AuthRouteService = Pick<AuthService, "register" | "login">;
+type AuthRouteService = Pick<
+  AuthService,
+  "register" | "login" | "getCurrentUser"
+>;
 
 type ValidationDetail = {
   field: string;
@@ -87,7 +90,42 @@ export function createAuthRoutes(
     return c.json({ message: "ログアウトしました" });
   });
 
+  app.get("/me", async (c) => {
+    const sessionUserId = await getSignedCookie(
+      c,
+      sessionSecret,
+      sessionCookieName,
+    );
+    if (!sessionUserId) {
+      return errorResponse(c, "UNAUTHORIZED", "ログインが必要です", 401);
+    }
+
+    const userId = parseUserId(sessionUserId);
+    if (userId === null) {
+      return errorResponse(c, "UNAUTHORIZED", "ログインが必要です", 401);
+    }
+
+    try {
+      const user = await authService.getCurrentUser(userId);
+      return c.json({ user });
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
   return app;
+}
+
+function parseUserId(value: string): bigint | null {
+  if (!/^[1-9][0-9]*$/.test(value)) {
+    return null;
+  }
+
+  try {
+    return BigInt(value);
+  } catch {
+    return null;
+  }
 }
 
 async function validateRegisterBody(

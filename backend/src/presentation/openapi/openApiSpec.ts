@@ -105,6 +105,24 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/me": {
+      get: {
+        summary: "Get the current logged-in user",
+        tags: ["Auth"],
+        responses: {
+          "200": {
+            description: "Current user",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AuthUserResponse" },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/": {
       get: {
         summary: "API information",
