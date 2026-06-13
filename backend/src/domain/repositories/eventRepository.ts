@@ -2,7 +2,7 @@ export type EventMemberRole = "OWNER" | "MEMBER";
 export type CandidateStatus = "PROPOSED" | "CONFIRMED" | "REJECTED";
 
 export type EventLocationRecord = {
-  name: string | null;
+  name: string;
   address: string | null;
   googlePlaceId: string | null;
   latitude: number | null;

@@ -9,7 +9,7 @@ import type {
 } from "../../domain/repositories/eventRepository.js";
 
 type LocationDto = {
-  name: string | null;
+  name: string;
   address: string | null;
   googlePlaceId: string | null;
   latitude: number | null;

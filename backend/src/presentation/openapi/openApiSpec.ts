@@ -292,7 +292,7 @@ export const openApiSpec = {
           "googleMapsUrl",
         ],
         properties: {
-          name: { type: ["string", "null"], example: "大阪駅" },
+          name: { type: "string", example: "大阪駅" },
           address: {
             type: ["string", "null"],
             example: "大阪府大阪市北区梅田3丁目1-1",
