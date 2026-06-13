@@ -25,24 +25,13 @@ export class InviteTokenService {
     currentMemberId: bigint;
     expiresAt: Date;
   }): Promise<{ inviteToken: InviteTokenDto }> {
-    const currentMember = await this.inviteTokenRepository.findEventMemberById(
+    this.assertFutureExpiresAt(input.expiresAt);
+
+    const event = await this.assertOwnerForEvent(
       input.currentMemberId,
+      input.eventId,
+      "招待URLを発行する権限がありません",
     );
-    if (currentMember === null) {
-      throw new ApplicationError("UNAUTHORIZED", "認証が必要です");
-    }
-
-    const event = await this.inviteTokenRepository.findEventById(input.eventId);
-    if (event === null) {
-      throw new ApplicationError("NOT_FOUND", "イベントが存在しません");
-    }
-
-    if (currentMember.eventId !== event.id) {
-      throw new ApplicationError("FORBIDDEN", "招待URLを発行する権限がありません");
-    }
-    if (currentMember.role !== "OWNER") {
-      throw new ApplicationError("FORBIDDEN", "招待URLを発行する権限がありません");
-    }
 
     const token = crypto.randomUUID();
     const record = await this.inviteTokenRepository.createInviteToken({
@@ -59,30 +48,11 @@ export class InviteTokenService {
     tokenId: bigint;
     currentMemberId: bigint;
   }): Promise<void> {
-    const currentMember = await this.inviteTokenRepository.findEventMemberById(
+    const event = await this.assertOwnerForEvent(
       input.currentMemberId,
+      input.eventId,
+      "招待URLを無効化する権限がありません",
     );
-    if (currentMember === null) {
-      throw new ApplicationError("UNAUTHORIZED", "認証が必要です");
-    }
-
-    const event = await this.inviteTokenRepository.findEventById(input.eventId);
-    if (event === null) {
-      throw new ApplicationError("NOT_FOUND", "イベントが存在しません");
-    }
-
-    if (currentMember.eventId !== event.id) {
-      throw new ApplicationError(
-        "FORBIDDEN",
-        "招待URLを無効化する権限がありません",
-      );
-    }
-    if (currentMember.role !== "OWNER") {
-      throw new ApplicationError(
-        "FORBIDDEN",
-        "招待URLを無効化する権限がありません",
-      );
-    }
 
     const inviteToken = await this.inviteTokenRepository.findInviteTokenById(
       input.tokenId,
@@ -95,6 +65,46 @@ export class InviteTokenService {
       input.tokenId,
       new Date(),
     );
+  }
+
+  private async assertOwnerForEvent(
+    currentMemberId: bigint,
+    eventId: bigint,
+    forbiddenMessage: string,
+  ): Promise<{ id: bigint }> {
+    const currentMember = await this.inviteTokenRepository.findEventMemberById(
+      currentMemberId,
+    );
+    if (currentMember === null) {
+      throw new ApplicationError("UNAUTHORIZED", "認証が必要です");
+    }
+
+    const event = await this.inviteTokenRepository.findEventById(eventId);
+    if (event === null) {
+      throw new ApplicationError("NOT_FOUND", "イベントが存在しません");
+    }
+
+    if (currentMember.eventId !== event.id || currentMember.role !== "OWNER") {
+      throw new ApplicationError("FORBIDDEN", forbiddenMessage);
+    }
+
+    return event;
+  }
+
+  private assertFutureExpiresAt(expiresAt: Date) {
+    if (!(expiresAt instanceof Date) || Number.isNaN(expiresAt.getTime())) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "expiresAt は有効な未来日時で指定してください",
+      );
+    }
+
+    if (expiresAt <= new Date()) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "expiresAt は有効な未来日時で指定してください",
+      );
+    }
   }
 
   private toDto(record: InviteTokenRecord): InviteTokenDto {

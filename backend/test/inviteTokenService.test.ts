@@ -91,6 +91,40 @@ describe("InviteTokenService", () => {
       );
       assert.equal(result.inviteToken.expiresAt, expiresAt.toISOString());
       assert.equal(result.inviteToken.revokedAt, null);
+      assert.equal(
+        new Date(result.inviteToken.createdAt).toISOString(),
+        result.inviteToken.createdAt,
+      );
+    });
+
+    it("rejects invalid expiresAt as conflict", async () => {
+      const repo = createRepository();
+      const service = new InviteTokenService(repo, FRONTEND_ORIGIN);
+
+      await assertRejectsWithCode(
+        () =>
+          service.createInviteToken({
+            eventId: 1n,
+            currentMemberId: 5n,
+            expiresAt: new Date("not-a-date"),
+          }),
+        "CONFLICT",
+      );
+    });
+
+    it("rejects past expiresAt as conflict", async () => {
+      const repo = createRepository();
+      const service = new InviteTokenService(repo, FRONTEND_ORIGIN);
+
+      await assertRejectsWithCode(
+        () =>
+          service.createInviteToken({
+            eventId: 1n,
+            currentMemberId: 5n,
+            expiresAt: new Date("2020-01-01T00:00:00.000Z"),
+          }),
+        "CONFLICT",
+      );
     });
 
     it("rejects unknown member as unauthorized", async () => {
@@ -214,6 +248,27 @@ describe("InviteTokenService", () => {
             eventId: 1n,
             tokenId: BigInt(inviteToken.id),
             currentMemberId: 6n,
+          }),
+        "FORBIDDEN",
+      );
+    });
+
+    it("rejects member from different event as forbidden", async () => {
+      const repo = createRepository();
+      const service = new InviteTokenService(repo, FRONTEND_ORIGIN);
+
+      const { inviteToken } = await service.createInviteToken({
+        eventId: 1n,
+        currentMemberId: 5n,
+        expiresAt,
+      });
+
+      await assertRejectsWithCode(
+        () =>
+          service.revokeInviteToken({
+            eventId: 1n,
+            tokenId: BigInt(inviteToken.id),
+            currentMemberId: 7n,
           }),
         "FORBIDDEN",
       );

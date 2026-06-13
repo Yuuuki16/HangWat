@@ -178,6 +178,32 @@ describe("inviteTokenRoutes", () => {
       });
 
       assert.equal(response.status, 404);
+      assert.deepEqual(await response.json(), {
+        error: { code: "NOT_FOUND", message: "イベントが存在しません" },
+      });
+    });
+
+    it("maps conflict error to 409", async () => {
+      const app = createInviteTokenRoutes(
+        createRouteService({
+          async createInviteToken() {
+            throw new ApplicationError(
+              "CONFLICT",
+              "expiresAt は有効な未来日時で指定してください",
+            );
+          },
+        }),
+      );
+
+      const response = await postInviteToken(app, { currentMemberId: "5" });
+
+      assert.equal(response.status, 409);
+      assert.deepEqual(await response.json(), {
+        error: {
+          code: "CONFLICT",
+          message: "expiresAt は有効な未来日時で指定してください",
+        },
+      });
     });
   });
 
@@ -257,6 +283,9 @@ describe("inviteTokenRoutes", () => {
       const response = await deleteInviteToken(app, { currentMemberId: "6" });
 
       assert.equal(response.status, 403);
+      assert.deepEqual(await response.json(), {
+        error: { code: "FORBIDDEN", message: "招待URLを無効化する権限がありません" },
+      });
     });
 
     it("maps not found error to 404", async () => {
@@ -274,6 +303,9 @@ describe("inviteTokenRoutes", () => {
       });
 
       assert.equal(response.status, 404);
+      assert.deepEqual(await response.json(), {
+        error: { code: "NOT_FOUND", message: "招待URLが存在しません" },
+      });
     });
   });
 });
