@@ -116,6 +116,7 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
       title: candidateTitle,
       time: candidateTime,
       location: candidateLocation,
+      status: "pending",
       commentCount: 0,
     };
     const nextCandidates = sortCandidatesByTime([...candidates, newCandidate]);
@@ -273,20 +274,36 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
                 {candidates.map((candidate, index) => (
                   <li
                     key={candidate.id}
-                    className="relative grid min-h-28 grid-cols-[40px_40px_24px_1fr] items-start"
+                    className={`relative grid min-h-28 items-start ${
+                      candidate.status === "confirmed"
+                        ? "grid-cols-[40px_0_0_1fr]"
+                        : "grid-cols-[40px_40px_24px_1fr]"
+                    }`}
                   >
                     <span
-                      aria-label="分岐地点"
-                      className="z-10 ml-0.5 mt-[14px] h-9 w-9 rounded-full border-[3px] border-dotted border-graph-green bg-background"
+                      aria-label={
+                        candidate.status === "confirmed"
+                          ? "予定確定済み"
+                          : "分岐地点"
+                      }
+                      className={`z-10 ml-0.5 mt-[14px] h-9 w-9 rounded-full border-[3px] border-graph-green ${
+                        candidate.status === "confirmed"
+                          ? "bg-graph-green shadow-[inset_0_0_0_5px_var(--background)]"
+                          : "border-dotted bg-background"
+                      }`}
                     />
-                    <span
-                      aria-hidden="true"
-                      className="mx-2 mt-[31px] h-0 border-t-[3px] border-dashed border-graph-orange"
-                    />
-                    <span
-                      aria-label="決定待ち"
-                      className="z-10 mt-5 h-6 w-6 rounded-full border-[3px] border-graph-orange bg-graph-orange"
-                    />
+                    {candidate.status === "pending" && (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="mx-2 mt-[31px] h-0 border-t-[3px] border-dashed border-graph-orange"
+                        />
+                        <span
+                          aria-label="決定待ち"
+                          className="z-10 mt-5 h-6 w-6 rounded-full border-[3px] border-graph-orange bg-graph-orange"
+                        />
+                      </>
+                    )}
                     <Link
                       href={`/events/${event.id}/slots/${candidate.id}`}
                       className="col-start-4 ml-3 block rounded-[28px] border-2 border-foreground bg-white px-5 py-3 transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"

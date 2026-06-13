@@ -2,10 +2,12 @@
 
 import { Clock3, Heart, MapPin, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { mockCandidateComments } from "@/features/events/data/mockCandidateComments";
 import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
 import {
+  confirmCandidate,
   loadCandidates,
   saveCandidates,
   sortCandidatesByTime,
@@ -20,6 +22,7 @@ export function CandidateThread({
   eventId,
   candidateId,
 }: CandidateThreadProps) {
+  const router = useRouter();
   const [candidate, setCandidate] = useState<ScheduleCandidate | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [comment, setComment] = useState("");
@@ -44,6 +47,11 @@ export function CandidateThread({
   const handleCommentSubmit = (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
     setComment("");
+  };
+
+  const handleConfirm = () => {
+    confirmCandidate(eventId, candidateId);
+    router.push(`/events/${eventId}`);
   };
 
   const openEditor = () => {
@@ -145,6 +153,7 @@ export function CandidateThread({
         <div className="mt-5 flex items-center justify-center gap-8">
           <button
             type="button"
+            onClick={handleConfirm}
             className="rounded-[10px] bg-primary px-4 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             予定確定

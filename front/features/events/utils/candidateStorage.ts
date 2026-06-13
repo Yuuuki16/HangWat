@@ -2,9 +2,10 @@ import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidat
 
 const storageKey = (eventId: string) => `hangwat:candidates:${eventId}`;
 
-type StoredCandidate = Omit<ScheduleCandidate, "time"> & {
+type StoredCandidate = Omit<ScheduleCandidate, "time" | "status"> & {
   time?: string;
   startAt?: string;
+  status?: ScheduleCandidate["status"];
 };
 
 const normalizeTime = (candidate: StoredCandidate) => {
@@ -38,6 +39,7 @@ export const loadCandidates = (eventId: string): ScheduleCandidate[] => {
         title: candidate.title,
         time: normalizeTime(candidate),
         location: candidate.location,
+        status: candidate.status ?? "pending",
         commentCount: candidate.commentCount,
       })),
     );
@@ -54,4 +56,14 @@ export const saveCandidates = (
     storageKey(eventId),
     JSON.stringify(sortCandidatesByTime(candidates)),
   );
+};
+
+export const confirmCandidate = (eventId: string, candidateId: string) => {
+  const candidates = loadCandidates(eventId).map((candidate) =>
+    candidate.id === candidateId
+      ? { ...candidate, status: "confirmed" as const }
+      : candidate,
+  );
+
+  saveCandidates(eventId, candidates);
 };
