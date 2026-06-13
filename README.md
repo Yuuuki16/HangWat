@@ -127,6 +127,14 @@ pnpm prisma:generate
 pnpm prisma:migrate
 ```
 
+NOT NULL カラムを追加する migration は、既存データが入った開発DBでは失敗することがあります。開発DBは破棄してよいので、その場合は次でボリュームごと作り直してから再実行します。
+
+```bash
+docker compose down -v
+docker compose up -d db
+pnpm prisma:migrate
+```
+
 バックエンドを起動します。
 
 ```bash

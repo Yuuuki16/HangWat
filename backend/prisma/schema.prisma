@@ -7,13 +7,149 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Task {
-  id          Int      @id @default(autoincrement())
-  title       String
-  description String?
-  completed   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model User {
+  id           BigInt   @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  avatarUrl    String?
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
 
-  @@index([createdAt(sort: Desc)], map: "Task_createdAt_desc_idx")
+  events       Event[]
+  eventMembers EventMember[]
+}
+
+model Location {
+  id            BigInt   @id @default(autoincrement())
+  name          String
+  address       String?
+  googlePlaceId String?
+  googleMapsUrl String?
+  latitude      Decimal? @db.Decimal(9, 6)
+  longitude     Decimal? @db.Decimal(9, 6)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  events             Event[]
+  scheduleCandidates ScheduleCandidate[]
+}
+
+model Event {
+  id                   BigInt    @id @default(autoincrement())
+  createdByUserId      BigInt
+  locationId           BigInt?
+  title                String
+  description          String?
+  eventDate            DateTime? @db.Date
+  confirmedCandidateId BigInt?   @unique
+  createdAt            DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(6)
+
+  creator            User                @relation(fields: [createdByUserId], references: [id])
+  location           Location?           @relation(fields: [locationId], references: [id])
+  confirmedCandidate ScheduleCandidate?  @relation("ConfirmedCandidate", fields: [confirmedCandidateId], references: [id])
+  inviteTokens       EventInviteToken[]
+  members            EventMember[]
+  scheduleCandidates ScheduleCandidate[] @relation("EventCandidates")
+}
+
+model EventInviteToken {
+  id          BigInt    @id @default(autoincrement())
+  eventId     BigInt
+  inviteToken String    @unique @db.Uuid
+  expiresAt   DateTime  @db.Timestamptz(6)
+  revokedAt   DateTime? @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+
+  event Event @relation(fields: [eventId], references: [id])
+}
+
+model EventMember {
+  id          BigInt          @id @default(autoincrement())
+  eventId     BigInt
+  userId      BigInt?
+  displayName String
+  role        EventMemberRole
+  createdAt   DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @db.Timestamptz(6)
+
+  event              Event                @relation(fields: [eventId], references: [id])
+  user               User?                @relation(fields: [userId], references: [id])
+  sessions           EventMemberSession[]
+  scheduleCandidates ScheduleCandidate[]
+  comments           Comment[]
+  commentLikes       CommentLike[]
+
+  // ゲスト(userId=NULL)は1人1行として重複参加を許容する。
+  // この一意制約は userId が非NULLの登録ユーザーの二重参加のみを防ぐ。
+  @@unique([eventId, userId])
+}
+
+model EventMemberSession {
+  id               BigInt    @id @default(autoincrement())
+  eventMemberId    BigInt
+  sessionTokenHash String    @unique
+  expiresAt        DateTime  @db.Timestamptz(6)
+  revokedAt        DateTime? @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  lastUsedAt       DateTime  @db.Timestamptz(6)
+
+  eventMember EventMember @relation(fields: [eventMemberId], references: [id])
+}
+
+model ScheduleCandidate {
+  id                BigInt                  @id @default(autoincrement())
+  eventId           BigInt
+  createdByMemberId BigInt
+  locationId        BigInt?
+  title             String
+  description       String?
+  startsAt          DateTime                @db.Timestamptz(6)
+  endsAt            DateTime?               @db.Timestamptz(6)
+  status            ScheduleCandidateStatus
+  createdAt         DateTime                @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime                @updatedAt @db.Timestamptz(6)
+
+  event            Event       @relation("EventCandidates", fields: [eventId], references: [id])
+  createdByMember  EventMember @relation(fields: [createdByMemberId], references: [id])
+  location         Location?   @relation(fields: [locationId], references: [id])
+  comments         Comment[]
+  confirmedByEvent Event?      @relation("ConfirmedCandidate")
+}
+
+model Comment {
+  id            BigInt   @id @default(autoincrement())
+  candidateId   BigInt
+  eventMemberId BigInt
+  body          String
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  candidate   ScheduleCandidate @relation(fields: [candidateId], references: [id])
+  eventMember EventMember       @relation(fields: [eventMemberId], references: [id])
+  likes       CommentLike[]
+}
+
+model CommentLike {
+  id            BigInt   @id @default(autoincrement())
+  commentId     BigInt
+  eventMemberId BigInt
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+
+  comment     Comment     @relation(fields: [commentId], references: [id])
+  eventMember EventMember @relation(fields: [eventMemberId], references: [id])
+
+  @@unique([commentId, eventMemberId])
+}
+
+enum EventMemberRole {
+  OWNER
+  MEMBER
+}
+
+enum ScheduleCandidateStatus {
+  PROPOSED
+  CONFIRMED
+  REJECTED
 }
