@@ -8,7 +8,7 @@ const maxCommentBodyLength = 1000;
 
 type CommentRouteService = Pick<
   CommentService,
-  "listComments" | "createComment"
+  "listComments" | "createComment" | "deleteComment"
 >;
 
 type ValidationDetail = {
@@ -79,6 +79,35 @@ export function createCommentRoutes(commentService: CommentRouteService) {
       });
 
       return c.json({ comment }, 201);
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.delete("/comments/:commentId", async (c) => {
+    const commentId = parseId(
+      c.req.param("commentId"),
+      "commentId",
+      "commentId が不正です",
+    );
+    if (!commentId.ok) {
+      return validationError(c, [commentId.detail]);
+    }
+
+    const currentMemberId = validateCurrentMemberHeader(
+      c.req.header("x-event-member-id"),
+    );
+    if (!currentMemberId.ok) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    try {
+      await commentService.deleteComment({
+        commentId: commentId.value,
+        currentMemberId: currentMemberId.value,
+      });
+
+      return c.json({ message: "コメントを削除しました" });
     } catch (error) {
       return handleRouteError(c, error);
     }

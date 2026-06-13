@@ -5,6 +5,7 @@ import type {
   CommentEvent,
   CommentEventMember,
   CommentRecord,
+  CommentRecordWithEvent,
   CommentRepository,
 } from "../../domain/repositories/commentRepository.js";
 
@@ -24,6 +25,12 @@ type PrismaCommentForResponse = {
   };
   createdAt: Date;
   updatedAt: Date;
+};
+
+type PrismaCommentWithEvent = PrismaCommentForResponse & {
+  candidate: {
+    eventId: bigint;
+  };
 };
 
 export class PrismaCommentRepository implements CommentRepository {
@@ -88,6 +95,31 @@ export class PrismaCommentRepository implements CommentRepository {
     return this.toCommentRecord(comment);
   }
 
+  async findCommentById(commentId: bigint, currentMemberId: bigint) {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+      select: {
+        ...this.commentResponseSelect(currentMemberId),
+        candidate: {
+          select: { eventId: true },
+        },
+      },
+    });
+
+    if (comment === null) {
+      return null;
+    }
+
+    return this.toCommentRecordWithEvent(comment);
+  }
+
+  async deleteCommentById(commentId: bigint) {
+    await this.prisma.$transaction([
+      this.prisma.commentLike.deleteMany({ where: { commentId } }),
+      this.prisma.comment.delete({ where: { id: commentId } }),
+    ]);
+  }
+
   private commentResponseSelect(currentMemberId: bigint) {
     return {
       id: true,
@@ -129,6 +161,15 @@ export class PrismaCommentRepository implements CommentRepository {
       likedByCurrentMember: comment.likes.length > 0,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,
+    };
+  }
+
+  private toCommentRecordWithEvent(
+    comment: PrismaCommentWithEvent,
+  ): CommentRecordWithEvent {
+    return {
+      ...this.toCommentRecord(comment),
+      eventId: comment.candidate.eventId,
     };
   }
 }

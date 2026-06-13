@@ -35,6 +35,10 @@ export type CommentRecord = {
   updatedAt: Date;
 };
 
+export type CommentRecordWithEvent = CommentRecord & {
+  eventId: bigint;
+};
+
 export interface CommentRepository {
   findEventMemberById(eventMemberId: bigint): Promise<CommentEventMember | null>;
   findEventById(eventId: bigint): Promise<CommentEvent | null>;
@@ -48,4 +52,9 @@ export interface CommentRepository {
     eventMemberId: bigint;
     body: string;
   }): Promise<CommentRecord>;
+  findCommentById(
+    commentId: bigint,
+    currentMemberId: bigint,
+  ): Promise<CommentRecordWithEvent | null>;
+  deleteCommentById(commentId: bigint): Promise<void>;
 }

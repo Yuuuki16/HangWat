@@ -3,6 +3,7 @@ import type {
   CommentCandidate,
   CommentEventMember,
   CommentRecord,
+  CommentRecordWithEvent,
   CommentRepository,
 } from "../../domain/repositories/commentRepository.js";
 
@@ -70,6 +71,24 @@ export class CommentService {
     return this.toCommentDto(comment);
   }
 
+  async deleteComment(input: {
+    commentId: bigint;
+    currentMemberId: bigint;
+  }) {
+    const currentMember = await this.resolveCurrentMember(
+      input.currentMemberId,
+    );
+    const comment = await this.resolveComment(
+      input.commentId,
+      currentMember.id,
+    );
+
+    this.assertMemberBelongsToEvent(currentMember, comment.eventId);
+    this.assertCanDeleteComment(currentMember, comment);
+
+    await this.commentRepository.deleteCommentById(comment.id);
+  }
+
   private async resolveCurrentMember(currentMemberId: bigint) {
     const currentMember =
       await this.commentRepository.findEventMemberById(currentMemberId);
@@ -115,6 +134,33 @@ export class CommentService {
     }
 
     return candidate satisfies CommentCandidate;
+  }
+
+  private async resolveComment(commentId: bigint, currentMemberId: bigint) {
+    const comment = await this.commentRepository.findCommentById(
+      commentId,
+      currentMemberId,
+    );
+    if (comment === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+
+    return comment;
+  }
+
+  private assertCanDeleteComment(
+    currentMember: CommentEventMember,
+    comment: CommentRecordWithEvent,
+  ) {
+    if (
+      currentMember.id !== comment.eventMemberId &&
+      currentMember.role !== "OWNER"
+    ) {
+      throw new ApplicationError(
+        "FORBIDDEN",
+        "この操作を行う権限がありません",
+      );
+    }
   }
 
   private toCommentDto(comment: CommentRecord): CommentDto {
