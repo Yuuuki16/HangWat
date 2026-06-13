@@ -71,7 +71,10 @@ export function createApp() {
   const eventService = new EventService(eventRepository);
   const eventMemberRepository = new PrismaEventMemberRepository(prisma);
   const eventMemberService = new EventMemberService(eventMemberRepository);
-  const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY ?? "";
+  const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (googleMapsApiKey === undefined || googleMapsApiKey.length === 0) {
+    throw new Error("GOOGLE_MAPS_API_KEY is not set");
+  }
   const googleMapsUrlResolver = new FetchGoogleMapsUrlResolver();
   const googlePlacesClient = new GooglePlacesApiClient(googleMapsApiKey);
   const locationService = new LocationService(

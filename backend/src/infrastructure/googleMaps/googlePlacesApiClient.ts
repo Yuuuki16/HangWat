@@ -4,6 +4,8 @@ import type {
   GooglePlacesClient,
 } from "../../domain/services/googlePlacesClient.js";
 
+const FETCH_TIMEOUT_MS = 10_000;
+
 type AutocompleteResponse = {
   predictions?: Array<{
     place_id?: string;
@@ -31,6 +33,22 @@ type PlaceDetailsResponse = {
   status?: string;
 };
 
+function assertOkStatus(status: string | undefined, context: string): void {
+  if (status !== "OK" && status !== "ZERO_RESULTS") {
+    throw new Error(`Google Places API ${context} failed: status=${status}`);
+  }
+}
+
+async function fetchWithTimeout(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export class GooglePlacesApiClient implements GooglePlacesClient {
   constructor(private readonly apiKey: string) {}
 
@@ -42,7 +60,7 @@ export class GooglePlacesApiClient implements GooglePlacesClient {
     url.searchParams.set("key", this.apiKey);
     url.searchParams.set("language", "ja");
 
-    const response = await fetch(url.toString());
+    const response = await fetchWithTimeout(url.toString());
     if (!response.ok) {
       throw new Error(
         `Google Places Autocomplete API error: ${response.status}`,
@@ -50,6 +68,7 @@ export class GooglePlacesApiClient implements GooglePlacesClient {
     }
 
     const data = (await response.json()) as AutocompleteResponse;
+    assertOkStatus(data.status, "autocomplete");
 
     if (!Array.isArray(data.predictions)) {
       return [];
@@ -78,7 +97,7 @@ export class GooglePlacesApiClient implements GooglePlacesClient {
       "name,formatted_address,place_id,geometry,url",
     );
 
-    const response = await fetch(url.toString());
+    const response = await fetchWithTimeout(url.toString());
     if (!response.ok) {
       throw new Error(`Google Places Details API error: ${response.status}`);
     }
@@ -88,6 +107,8 @@ export class GooglePlacesApiClient implements GooglePlacesClient {
     if (data.status === "NOT_FOUND" || data.status === "ZERO_RESULTS") {
       return null;
     }
+
+    assertOkStatus(data.status, "details");
 
     const result = data.result;
     if (result === undefined) {
