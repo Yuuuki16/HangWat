@@ -193,21 +193,28 @@ export class PrismaScheduleCandidateRepository
     candidateId: bigint;
   }) {
     const confirmation = await this.prisma.$transaction(async (tx) => {
-      const event = await tx.event.update({
-        where: { id: input.eventId },
+      const eventUpdate = await tx.event.updateMany({
+        where: { id: input.eventId, confirmedCandidateId: null },
         data: { confirmedCandidateId: input.candidateId },
-        select: { id: true, confirmedCandidateId: true },
       });
+      if (eventUpdate.count !== 1) {
+        return null;
+      }
+
       const candidate = await tx.scheduleCandidate.update({
         where: { id: input.candidateId },
         data: { status: "CONFIRMED" },
         select: { id: true, status: true },
       });
+      const event = await tx.event.findUniqueOrThrow({
+        where: { id: input.eventId },
+        select: { id: true, confirmedCandidateId: true },
+      });
 
       return { event, candidate };
     });
 
-    return confirmation satisfies ScheduleCandidateConfirmationRecord;
+    return confirmation satisfies ScheduleCandidateConfirmationRecord | null;
   }
 
   async cancelScheduleCandidateConfirmation(input: {
@@ -215,21 +222,31 @@ export class PrismaScheduleCandidateRepository
     candidateId: bigint;
   }) {
     const confirmation = await this.prisma.$transaction(async (tx) => {
-      const event = await tx.event.update({
-        where: { id: input.eventId },
+      const eventUpdate = await tx.event.updateMany({
+        where: {
+          id: input.eventId,
+          confirmedCandidateId: input.candidateId,
+        },
         data: { confirmedCandidateId: null },
-        select: { id: true, confirmedCandidateId: true },
       });
+      if (eventUpdate.count !== 1) {
+        return null;
+      }
+
       const candidate = await tx.scheduleCandidate.update({
         where: { id: input.candidateId },
         data: { status: "PROPOSED" },
         select: { id: true, status: true },
       });
+      const event = await tx.event.findUniqueOrThrow({
+        where: { id: input.eventId },
+        select: { id: true, confirmedCandidateId: true },
+      });
 
       return { event, candidate };
     });
 
-    return confirmation satisfies ScheduleCandidateConfirmationRecord;
+    return confirmation satisfies ScheduleCandidateConfirmationRecord | null;
   }
 
   private scheduleCandidateResponseSelect() {

@@ -23,6 +23,9 @@ class FakeScheduleCandidateRepository
   readonly locations = new Map<string, ScheduleCandidateLocationInput>();
   readonly deletedCandidateIds: bigint[] = [];
   readonly confirmedCandidateIds: bigint[] = [];
+  readonly cancelledCandidateIds: bigint[] = [];
+  failNextConfirmation = false;
+  failNextCancelConfirmation = false;
   nextCandidateId = 10n;
   nextLocationId = 20n;
 
@@ -137,6 +140,11 @@ class FakeScheduleCandidateRepository
     eventId: bigint;
     candidateId: bigint;
   }) {
+    if (this.failNextConfirmation) {
+      this.failNextConfirmation = false;
+      return null;
+    }
+
     const event = this.events.get(key(input.eventId));
     const candidate = this.candidates.get(key(input.candidateId));
     assert.ok(event);
@@ -155,6 +163,46 @@ class FakeScheduleCandidateRepository
     this.events.set(key(input.eventId), updatedEvent);
     this.candidates.set(key(input.candidateId), updatedCandidate);
     this.confirmedCandidateIds.push(input.candidateId);
+
+    return {
+      event: {
+        id: updatedEvent.id,
+        confirmedCandidateId: updatedEvent.confirmedCandidateId,
+      },
+      candidate: {
+        id: updatedCandidate.id,
+        status: updatedCandidate.status,
+      },
+    };
+  }
+
+  async cancelScheduleCandidateConfirmation(input: {
+    eventId: bigint;
+    candidateId: bigint;
+  }) {
+    if (this.failNextCancelConfirmation) {
+      this.failNextCancelConfirmation = false;
+      return null;
+    }
+
+    const event = this.events.get(key(input.eventId));
+    const candidate = this.candidates.get(key(input.candidateId));
+    assert.ok(event);
+    assert.ok(candidate);
+
+    const updatedEvent = {
+      ...event,
+      confirmedCandidateId: null,
+    };
+    const updatedCandidate: ScheduleCandidateRecord = {
+      ...candidate,
+      status: "PROPOSED",
+      updatedAt: new Date("2026-07-31T10:50:00.000Z"),
+    };
+
+    this.events.set(key(input.eventId), updatedEvent);
+    this.candidates.set(key(input.candidateId), updatedCandidate);
+    this.cancelledCandidateIds.push(input.candidateId);
 
     return {
       event: {
@@ -875,6 +923,78 @@ describe("ScheduleCandidateService", () => {
         error.message === "すでに別の予定が確定しています",
     );
     assert.deepEqual(repository.confirmedCandidateIds, []);
+  });
+
+  it("rejects raced confirmation as conflict", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    repository.failNextConfirmation = true;
+    const service = new ScheduleCandidateService(repository);
+
+    await assert.rejects(
+      () =>
+        service.confirmScheduleCandidate({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 8n,
+        }),
+      (error) =>
+        error instanceof ApplicationError &&
+        error.code === "CONFLICT" &&
+        error.message === "すでに別の予定が確定しています",
+    );
+    assert.deepEqual(repository.confirmedCandidateIds, []);
+    assert.equal(repository.candidates.get("10")?.status, "PROPOSED");
+  });
+
+  it("cancels a schedule candidate confirmation by owner", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository, { status: "CONFIRMED" });
+    repository.events.set("1", { id: 1n, confirmedCandidateId: 10n });
+    const service = new ScheduleCandidateService(repository);
+
+    const confirmation = await service.cancelScheduleCandidateConfirmation({
+      eventId: 1n,
+      candidateId: 10n,
+      currentMemberId: 8n,
+    });
+
+    assert.deepEqual(repository.cancelledCandidateIds, [10n]);
+    assert.equal(repository.events.get("1")?.confirmedCandidateId, null);
+    assert.equal(repository.candidates.get("10")?.status, "PROPOSED");
+    assert.deepEqual(confirmation, {
+      event: {
+        id: "1",
+        confirmedCandidateId: null,
+      },
+      candidate: {
+        id: "10",
+        status: "pending",
+      },
+    });
+  });
+
+  it("rejects raced cancel confirmation as conflict", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository, { status: "CONFIRMED" });
+    repository.events.set("1", { id: 1n, confirmedCandidateId: 10n });
+    repository.failNextCancelConfirmation = true;
+    const service = new ScheduleCandidateService(repository);
+
+    await assert.rejects(
+      () =>
+        service.cancelScheduleCandidateConfirmation({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 8n,
+        }),
+      (error) =>
+        error instanceof ApplicationError &&
+        error.code === "CONFLICT" &&
+        error.message === "指定された予定候補は確定されていません",
+    );
+    assert.deepEqual(repository.cancelledCandidateIds, []);
+    assert.equal(repository.candidates.get("10")?.status, "CONFIRMED");
   });
 });
 

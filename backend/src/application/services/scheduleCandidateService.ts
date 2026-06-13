@@ -208,6 +208,12 @@ export class ScheduleCandidateService {
         eventId: event.id,
         candidateId: existingCandidate.id,
       });
+    if (confirmation === null) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "すでに別の予定が確定しています",
+      );
+    }
 
     return this.toScheduleCandidateConfirmationDto(confirmation);
   }
@@ -252,6 +258,12 @@ export class ScheduleCandidateService {
         eventId: event.id,
         candidateId: existingCandidate.id,
       });
+    if (confirmation === null) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "指定された予定候補は確定されていません",
+      );
+    }
 
     return this.toScheduleCandidateConfirmationDto(confirmation);
   }

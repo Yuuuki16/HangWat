@@ -15,6 +15,7 @@ type ScheduleCandidateRouteService = Pick<
   | "updateScheduleCandidate"
   | "deleteScheduleCandidate"
   | "confirmScheduleCandidate"
+  | "cancelScheduleCandidateConfirmation"
 >;
 
 const sampleCandidate: ScheduleCandidateDto = {
@@ -68,6 +69,18 @@ function createRouteService(
     async deleteScheduleCandidate() {},
     async confirmScheduleCandidate() {
       return sampleConfirmation;
+    },
+    async cancelScheduleCandidateConfirmation() {
+      return {
+        event: {
+          id: "1",
+          confirmedCandidateId: null,
+        },
+        candidate: {
+          id: "10",
+          status: "pending",
+        },
+      };
     },
     ...overrides,
   };
@@ -171,6 +184,28 @@ function confirmCandidate(
 
   return app.request(
     `/events/${options.eventId ?? "1"}/candidates/${options.candidateId ?? "10"}/confirm`,
+    {
+      method: "POST",
+      headers,
+    },
+  );
+}
+
+function cancelCandidateConfirmation(
+  app: ReturnType<typeof createScheduleCandidateRoutes>,
+  options: {
+    eventId?: string;
+    candidateId?: string;
+    currentMemberId?: string;
+  } = {},
+) {
+  const headers: Record<string, string> = {};
+  if (options.currentMemberId !== undefined) {
+    headers["x-event-member-id"] = options.currentMemberId;
+  }
+
+  return app.request(
+    `/events/${options.eventId ?? "1"}/candidates/${options.candidateId ?? "10"}/cancel-confirm`,
     {
       method: "POST",
       headers,
@@ -961,6 +996,31 @@ describe("scheduleCandidateRoutes", () => {
       error: {
         code: "CONFLICT",
         message: "すでに別の予定が確定しています",
+      },
+    });
+  });
+
+  it("maps cancel-confirm conflict error to common error response", async () => {
+    const app = createScheduleCandidateRoutes(
+      createRouteService({
+        async cancelScheduleCandidateConfirmation() {
+          throw new ApplicationError(
+            "CONFLICT",
+            "指定された予定候補は確定されていません",
+          );
+        },
+      }),
+    );
+
+    const response = await cancelCandidateConfirmation(app, {
+      currentMemberId: "8",
+    });
+
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "CONFLICT",
+        message: "指定された予定候補は確定されていません",
       },
     });
   });
