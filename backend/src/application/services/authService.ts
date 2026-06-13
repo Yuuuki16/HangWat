@@ -6,9 +6,6 @@ import {
 } from "../../domain/repositories/authRepository.js";
 import type { PasswordHasher } from "../../domain/services/passwordHasher.js";
 
-// 未登録メール時もパスワード検証を実行し、応答時間差によるアカウント列挙を防ぐためのダミーハッシュ。
-const dummyPasswordHash =
-  "scrypt$343ccd549e564a159e2c08bf26d31ebb$e0df2a29cf46bc6e4c59589af865f6444510dec61b7c1ffce19d96e7860d4869dade92df38a9be07e59c0b5d0faed7f3f62569a71c509fcf8dea1ff68ab3256a";
 
 export type AuthUserDto = {
   id: string;
@@ -58,12 +55,21 @@ export class AuthService {
       input.email,
     );
 
+    if (credential === null) {
+      // ユーザー不在時もハッシュ演算を実行し、応答時間差によるアカウント列挙を防ぐ。
+      await this.passwordHasher.hash(input.password);
+      throw new ApplicationError(
+        "UNAUTHORIZED",
+        "メールアドレスまたはパスワードが正しくありません",
+      );
+    }
+
     const passwordMatches = await this.passwordHasher.verify(
       input.password,
-      credential?.passwordHash ?? dummyPasswordHash,
+      credential.passwordHash,
     );
 
-    if (credential === null || !passwordMatches) {
+    if (!passwordMatches) {
       throw new ApplicationError(
         "UNAUTHORIZED",
         "メールアドレスまたはパスワードが正しくありません",
