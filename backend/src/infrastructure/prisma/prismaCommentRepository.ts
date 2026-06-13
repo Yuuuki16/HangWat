@@ -4,6 +4,7 @@ import type {
   CommentCandidate,
   CommentEvent,
   CommentEventMember,
+  CommentLikeState,
   CommentRecord,
   CommentRecordWithEvent,
   CommentRepository,
@@ -113,6 +114,21 @@ export class PrismaCommentRepository implements CommentRepository {
     return this.toCommentRecordWithEvent(comment);
   }
 
+  async likeComment(input: { commentId: bigint; eventMemberId: bigint }) {
+    await this.prisma.commentLike.upsert({
+      where: {
+        commentId_eventMemberId: {
+          commentId: input.commentId,
+          eventMemberId: input.eventMemberId,
+        },
+      },
+      create: input,
+      update: {},
+    });
+
+    return this.findCommentLikeState(input.commentId, input.eventMemberId);
+  }
+
   async deleteCommentById(commentId: bigint) {
     await this.prisma.$transaction([
       this.prisma.commentLike.deleteMany({ where: { commentId } }),
@@ -144,6 +160,32 @@ export class PrismaCommentRepository implements CommentRepository {
       createdAt: true,
       updatedAt: true,
     } as const;
+  }
+
+  private async findCommentLikeState(
+    commentId: bigint,
+    currentMemberId: bigint,
+  ): Promise<CommentLikeState> {
+    const comment = await this.prisma.comment.findUniqueOrThrow({
+      where: { id: commentId },
+      select: {
+        id: true,
+        likes: {
+          where: { eventMemberId: currentMemberId },
+          select: { id: true },
+          take: 1,
+        },
+        _count: {
+          select: { likes: true },
+        },
+      },
+    });
+
+    return {
+      commentId: comment.id,
+      likedByCurrentMember: comment.likes.length > 0,
+      likeCount: comment._count.likes,
+    };
   }
 
   private toCommentRecord(comment: PrismaCommentForResponse): CommentRecord {

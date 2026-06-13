@@ -39,6 +39,12 @@ export type CommentRecordWithEvent = CommentRecord & {
   eventId: bigint;
 };
 
+export type CommentLikeState = {
+  commentId: bigint;
+  likedByCurrentMember: boolean;
+  likeCount: number;
+};
+
 export interface CommentRepository {
   findEventMemberById(eventMemberId: bigint): Promise<CommentEventMember | null>;
   findEventById(eventId: bigint): Promise<CommentEvent | null>;
@@ -56,5 +62,9 @@ export interface CommentRepository {
     commentId: bigint,
     currentMemberId: bigint,
   ): Promise<CommentRecordWithEvent | null>;
+  likeComment(input: {
+    commentId: bigint;
+    eventMemberId: bigint;
+  }): Promise<CommentLikeState>;
   deleteCommentById(commentId: bigint): Promise<void>;
 }
