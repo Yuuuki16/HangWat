@@ -13,12 +13,13 @@ export function SignupForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-12">
+    <form onSubmit={handleSubmit} className="flex w-full flex-col gap-8">
       <AuthFormField
         id="signup-email"
         name="email"
         type="email"
         label="メールアドレス"
+        placeholder="example@email.com"
         autoComplete="email"
         required
         value={email}
@@ -30,6 +31,7 @@ export function SignupForm() {
         name="password"
         type="password"
         label="パスワード"
+        placeholder="8文字以上で入力"
         autoComplete="new-password"
         required
         value={password}
@@ -41,6 +43,7 @@ export function SignupForm() {
         name="username"
         type="text"
         label="ユーザーネーム"
+        placeholder="yamada_taro"
         autoComplete="username"
         required
         value={username}

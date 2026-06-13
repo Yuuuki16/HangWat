@@ -18,7 +18,7 @@ export default function LoginPage() {
       </div>
 
       <div className="mt-14 w-full max-w-md">
-        <SignupPrompt description="新規の方は" linkLabel="こちら" href="/signup" />
+        <SignupPrompt description="新規の方は" linkLabel="こちら" href="/sign-up" />
       </div>
     </main>
   );
