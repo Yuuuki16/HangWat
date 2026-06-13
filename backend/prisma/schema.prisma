@@ -84,6 +84,7 @@ model EventMember {
   // ゲスト(userId=NULL)は1人1行として重複参加を許容する。
   // この一意制約は userId が非NULLの登録ユーザーの二重参加のみを防ぐ。
   @@unique([eventId, userId])
+  @@unique([eventId, displayName])
 }
 
 model EventMemberSession {

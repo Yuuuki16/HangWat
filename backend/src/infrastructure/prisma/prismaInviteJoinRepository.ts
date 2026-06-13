@@ -1,4 +1,7 @@
+import { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
+
+import { ApplicationError } from "../../application/errors/applicationError.js";
 
 import type {
   InviteJoinEventMemberRecord,
@@ -76,6 +79,7 @@ export class PrismaInviteJoinRepository implements InviteJoinRepository {
     sessionTokenHash: string;
     sessionExpiresAt: Date;
   }) {
+    try {
     return await this.prisma.$transaction(async (tx) => {
       const eventMember = await tx.eventMember.create({
         data: {
@@ -99,6 +103,18 @@ export class PrismaInviteJoinRepository implements InviteJoinRepository {
 
       return { eventMember, memberSession };
     });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ApplicationError(
+          "CONFLICT",
+          "同じイベント内で同じ表示名が既に使われています",
+        );
+      }
+      throw error;
+    }
   }
 
   async findMemberSessionByTokenHash(sessionTokenHash: string) {

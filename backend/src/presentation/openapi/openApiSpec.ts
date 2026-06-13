@@ -862,7 +862,7 @@ export const openApiSpec = {
         name: "inviteToken",
         in: "path",
         required: true,
-        schema: { type: "string", example: "abc123" },
+        schema: { type: "string", minLength: 1, maxLength: 512, example: "abc123" },
       },
     },
     responses: {
@@ -1600,6 +1600,8 @@ export const openApiSpec = {
         properties: {
           memberSessionToken: {
             type: "string",
+            minLength: 1,
+            maxLength: 512,
             example: "plain_local_token_returned_once",
           },
         },
