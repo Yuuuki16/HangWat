@@ -52,6 +52,12 @@ DB、バックエンド、フロントエンドをまとめて起動します。
 docker compose up --build
 ```
 
+フロントエンドを編集しながら Docker で起動する場合は、開発用 override を重ねます。`front` は `next dev` で起動し、`front/` の変更がホットリロードされます。
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build front
+```
+
 ローカル Docker では backend 起動時に `prisma migrate deploy` を実行します。
 
 - Frontend: http://localhost:3000
