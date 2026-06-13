@@ -3,5 +3,4 @@ export type Event = {
   title: string;
   date: string;
   location: string;
-  canDelete: boolean;
 };

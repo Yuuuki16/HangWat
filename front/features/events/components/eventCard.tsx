@@ -32,15 +32,13 @@ export function EventCard({ event }: EventCardProps) {
         </div>
       </dl>
 
-      {event.canDelete && (
-        <button
-          type="button"
-          className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 items-center gap-1 rounded-full bg-danger px-3 py-1 text-xs text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
-        >
-          <Trash2 aria-hidden="true" size={14} />
-          削除
-        </button>
-      )}
+      <button
+        type="button"
+        className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 items-center gap-1 rounded-full bg-danger px-3 py-1 text-xs text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+      >
+        <Trash2 aria-hidden="true" size={14} />
+        削除
+      </button>
     </article>
   );
 }
