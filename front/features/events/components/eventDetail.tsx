@@ -13,6 +13,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { Event } from "@/features/events/types/event";
 import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
@@ -286,8 +287,9 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
                       aria-label="決定待ち"
                       className="z-10 mt-5 h-6 w-6 rounded-full border-[3px] border-graph-orange bg-graph-orange"
                     />
-                    <article
-                      className="col-start-4 ml-3 block rounded-[28px] border-2 border-foreground bg-white px-5 py-3"
+                    <Link
+                      href={`/events/${event.id}/slots/${candidate.id}`}
+                      className="col-start-4 ml-3 block rounded-[28px] border-2 border-foreground bg-white px-5 py-3 transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                     >
                       <p className="truncate text-sm">{candidate.title}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
@@ -306,7 +308,7 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
                           {candidate.commentCount}件
                         </span>
                       </div>
-                    </article>
+                    </Link>
                     <span
                       aria-hidden="true"
                       className={`absolute left-[19px] top-[54px] border-l-2 ${
