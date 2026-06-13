@@ -330,6 +330,72 @@ export const openApiSpec = {
               },
             },
           },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/members": {
+      get: {
+        summary: "List event members",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Event members",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["members"],
+                  properties: {
+                    members: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/EventMember" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/me/member": {
+      get: {
+        summary: "Get the current event member",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Current event member",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["eventMember"],
+                  properties: {
+                    eventMember: {
+                      $ref: "#/components/schemas/CurrentEventMember",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
           "401": { $ref: "#/components/responses/Unauthorized" },
           "403": { $ref: "#/components/responses/Forbidden" },
           "404": { $ref: "#/components/responses/NotFound" },
@@ -800,6 +866,37 @@ export const openApiSpec = {
             example: "guest",
           },
           user: { $ref: "#/components/schemas/User" },
+        },
+      },
+      CurrentEventMember: {
+        type: "object",
+        required: [
+          "id",
+          "eventId",
+          "userId",
+          "displayName",
+          "role",
+          "memberType",
+        ],
+        properties: {
+          id: { $ref: "#/components/schemas/BigIntId" },
+          eventId: { $ref: "#/components/schemas/BigIntId" },
+          userId: {
+            type: ["string", "null"],
+            pattern: "^[1-9][0-9]*$",
+            example: null,
+          },
+          displayName: { type: "string", example: "たくや" },
+          role: {
+            type: "string",
+            enum: ["owner", "member"],
+            example: "member",
+          },
+          memberType: {
+            type: "string",
+            enum: ["user", "guest"],
+            example: "guest",
+          },
         },
       },
       EventListItem: {
