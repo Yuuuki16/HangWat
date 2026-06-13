@@ -16,6 +16,10 @@ export function HeaderGate() {
     return <Header />;
   }
 
+  if (/^\/invite\/[^/]+$/.test(pathname)) {
+    return <Header showProfile={false} />;
+  }
+
   const slotRouteMatch = pathname.match(
     /^\/events\/([^/]+)\/slots\/[^/]+$/,
   );
