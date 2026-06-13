@@ -6,6 +6,16 @@ type EventCardProps = {
   event: Event;
 };
 
+function formatEventDate(date: string) {
+  const eventDate = new Date(`${date}T00:00:00`);
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(eventDate);
+}
+
 export function EventCard({ event }: EventCardProps) {
   return (
     <article className="relative rounded-base border-2 border-foreground bg-event px-3 py-2">
@@ -22,7 +32,7 @@ export function EventCard({ event }: EventCardProps) {
           <dt>
             <CalendarDays aria-label="開催日" size={18} strokeWidth={2} />
           </dt>
-          <dd>{event.date}</dd>
+          <dd>{formatEventDate(event.date)}</dd>
         </div>
         <div className="flex items-center gap-2">
           <dt>
