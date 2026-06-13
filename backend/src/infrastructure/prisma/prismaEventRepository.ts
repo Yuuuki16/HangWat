@@ -1,12 +1,19 @@
 import type { PrismaClient } from "@prisma/client";
 
+import {
+  EventUserNotFoundError,
+} from "../../domain/repositories/eventRepository.js";
 import type {
   EventCandidateRecord,
+  EventCreateInput,
+  EventCreatedRecord,
   EventDetailRecord,
   EventListRecord,
   EventLocationRecord,
   EventMemberRecord,
   EventRepository,
+  EventUpdateInput,
+  EventUpdatedRecord,
 } from "../../domain/repositories/eventRepository.js";
 
 type DecimalLike = {
@@ -82,7 +89,7 @@ export class PrismaEventRepository implements EventRepository {
   async findUserById(userId: bigint) {
     return this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
   }
 
@@ -110,6 +117,132 @@ export class PrismaEventRepository implements EventRepository {
       memberCount: event._count.members,
       confirmedCandidateId: event.confirmedCandidateId,
     }));
+  }
+
+
+  async createEvent(input: EventCreateInput): Promise<EventCreatedRecord> {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: input.userId },
+        select: { name: true },
+      });
+      if (user === null) throw new EventUserNotFoundError();
+
+      let locationId: bigint | null = null;
+      if (input.location !== null) {
+        const location = await tx.location.create({
+          data: {
+            name: input.location.name,
+            address: input.location.address,
+            googlePlaceId: input.location.googlePlaceId,
+            latitude: input.location.latitude,
+            longitude: input.location.longitude,
+            googleMapsUrl: input.location.googleMapsUrl,
+          },
+        });
+        locationId = location.id;
+      }
+
+      const event = await tx.event.create({
+        data: {
+          createdByUserId: input.userId,
+          locationId,
+          title: input.title,
+          eventDate: input.eventDate,
+          description: input.description,
+        },
+        select: {
+          id: true,
+          title: true,
+          eventDate: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      const member = await tx.eventMember.create({
+        data: {
+          eventId: event.id,
+          userId: input.userId,
+          displayName: user.name,
+          role: "OWNER",
+        },
+        select: this.memberSelect(),
+      });
+
+      return { event, member };
+    });
+
+    return {
+      id: result.event.id,
+      title: result.event.title,
+      eventDate: result.event.eventDate,
+      location: input.location,
+      description: result.event.description,
+      inviteUrl: null,
+      confirmedCandidateId: null,
+      myMember: this.toEventMemberRecord(result.member),
+      createdAt: result.event.createdAt,
+      updatedAt: result.event.updatedAt,
+    };
+  }
+
+  async findEventMemberByUserAndEvent(
+    eventId: bigint,
+    userId: bigint,
+  ): Promise<EventMemberRecord | null> {
+    const member = await this.prisma.eventMember.findFirst({
+      where: { eventId, userId },
+      select: this.memberSelect(),
+    });
+    return member === null ? null : this.toEventMemberRecord(member);
+  }
+
+  async updateEvent(input: EventUpdateInput): Promise<EventUpdatedRecord> {
+    return await this.prisma.$transaction(async (tx) => {
+      let locationId: bigint | null = null;
+      if (input.location !== null) {
+        const location = await tx.location.create({
+          data: {
+            name: input.location.name,
+            address: input.location.address,
+            googlePlaceId: input.location.googlePlaceId,
+            latitude: input.location.latitude,
+            longitude: input.location.longitude,
+            googleMapsUrl: input.location.googleMapsUrl,
+          },
+        });
+        locationId = location.id;
+      }
+
+      const event = await tx.event.update({
+        where: { id: input.eventId },
+        data: {
+          title: input.title,
+          eventDate: input.eventDate,
+          locationId,
+          description: input.description,
+        },
+        select: {
+          id: true,
+          title: true,
+          eventDate: true,
+          location: { select: this.locationSelect() },
+          description: true,
+          updatedAt: true,
+        },
+      });
+
+      return {
+        id: event.id,
+        title: event.title,
+        eventDate: event.eventDate,
+        location: this.toLocationRecord(event.location),
+        description: event.description,
+        updatedAt: event.updatedAt,
+      };
+    });
   }
 
   async findEventMemberById(eventMemberId: bigint) {
@@ -259,6 +392,47 @@ export class PrismaEventRepository implements EventRepository {
       role: member.role,
       user: member.user,
     };
+  }
+
+  async deleteEvent(eventId: bigint): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const candidateIds = await tx.scheduleCandidate.findMany({
+        where: { eventId },
+        select: { id: true },
+      });
+      const candidateIdList = candidateIds.map((c) => c.id);
+
+      if (candidateIdList.length > 0) {
+        await tx.commentLike.deleteMany({
+          where: { comment: { candidateId: { in: candidateIdList } } },
+        });
+        await tx.comment.deleteMany({
+          where: { candidateId: { in: candidateIdList } },
+        });
+      }
+
+      await tx.event.update({
+        where: { id: eventId },
+        data: { confirmedCandidateId: null },
+      });
+      await tx.scheduleCandidate.deleteMany({ where: { eventId } });
+
+      const memberIds = await tx.eventMember.findMany({
+        where: { eventId },
+        select: { id: true },
+      });
+      const memberIdList = memberIds.map((m) => m.id);
+
+      if (memberIdList.length > 0) {
+        await tx.eventMemberSession.deleteMany({
+          where: { eventMemberId: { in: memberIdList } },
+        });
+      }
+      await tx.eventMember.deleteMany({ where: { eventId } });
+
+      await tx.eventInviteToken.deleteMany({ where: { eventId } });
+      await tx.event.delete({ where: { id: eventId } });
+    });
   }
 
   private toLocationRecord(

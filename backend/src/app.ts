@@ -69,7 +69,7 @@ export function createApp() {
   const healthService = new HealthService(healthRepository);
 
   app.route("/api", createAuthRoutes(authService, sessionSecret));
-  app.route("/api", createEventRoutes(eventService));
+  app.route("/api", createEventRoutes(eventService, sessionSecret));
   app.route("/api", createScheduleCandidateRoutes(scheduleCandidateService));
   app.route("/api", createCommentRoutes(commentService));
   app.route("/", createDocsRoutes());

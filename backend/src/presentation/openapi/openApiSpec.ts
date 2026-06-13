@@ -207,6 +207,38 @@ export const openApiSpec = {
           "500": { $ref: "#/components/responses/InternalServerError" },
         },
       },
+      post: {
+        summary: "Create a new event",
+        tags: ["Event"],
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateEventRequest" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created event",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["event"],
+                  properties: {
+                    event: { $ref: "#/components/schemas/CreatedEvent" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
     },
     "/api/events/{eventId}": {
       get: {
@@ -230,6 +262,133 @@ export const openApiSpec = {
                       items: {
                         $ref: "#/components/schemas/ScheduleCandidate",
                       },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+      patch: {
+        summary: "Update event",
+        tags: ["Event"],
+        security: [{ cookieAuth: [] }],
+        parameters: [{ $ref: "#/components/parameters/EventId" }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateEventRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated event",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["event"],
+                  properties: {
+                    event: { $ref: "#/components/schemas/UpdatedEvent" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+      delete: {
+        summary: "Delete event",
+        tags: ["Event"],
+        security: [{ cookieAuth: [] }],
+        parameters: [{ $ref: "#/components/parameters/EventId" }],
+        responses: {
+          "200": {
+            description: "Event deleted",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["message"],
+                  properties: {
+                    message: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/members": {
+      get: {
+        summary: "List event members",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Event members",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["members"],
+                  properties: {
+                    members: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/EventMember" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/me/member": {
+      get: {
+        summary: "Get the current event member",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Current event member",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["eventMember"],
+                  properties: {
+                    eventMember: {
+                      $ref: "#/components/schemas/CurrentEventMember",
                     },
                   },
                 },
@@ -742,6 +901,37 @@ export const openApiSpec = {
           user: { $ref: "#/components/schemas/User" },
         },
       },
+      CurrentEventMember: {
+        type: "object",
+        required: [
+          "id",
+          "eventId",
+          "userId",
+          "displayName",
+          "role",
+          "memberType",
+        ],
+        properties: {
+          id: { $ref: "#/components/schemas/BigIntId" },
+          eventId: { $ref: "#/components/schemas/BigIntId" },
+          userId: {
+            type: ["string", "null"],
+            pattern: "^[1-9][0-9]*$",
+            example: null,
+          },
+          displayName: { type: "string", example: "たくや" },
+          role: {
+            type: "string",
+            enum: ["owner", "member"],
+            example: "member",
+          },
+          memberType: {
+            type: "string",
+            enum: ["user", "guest"],
+            example: "guest",
+          },
+        },
+      },
       EventListItem: {
         type: "object",
         required: [
@@ -972,6 +1162,99 @@ export const openApiSpec = {
             type: ["string", "null"],
             maxLength: 1000,
             example: "梅田の一蘭に行く案",
+          },
+        },
+      },
+      CreateEventRequest: {
+        type: "object",
+        required: ["title"],
+        properties: {
+          title: {
+            type: "string",
+            minLength: 1,
+            maxLength: 100,
+            example: "梅田で昼ごはん",
+          },
+          date: {
+            type: ["string", "null"],
+            format: "date",
+            example: "2026-07-31",
+          },
+          location: {
+            oneOf: [
+              { $ref: "#/components/schemas/Location" },
+              { type: "null" },
+            ],
+          },
+          description: {
+            type: ["string", "null"],
+            maxLength: 1000,
+            example: "昼ごはん候補を決める",
+          },
+        },
+      },
+      CreatedEvent: {
+        type: "object",
+        required: [
+          "id",
+          "title",
+          "date",
+          "location",
+          "description",
+          "inviteUrl",
+          "confirmedCandidateId",
+          "myMember",
+          "createdAt",
+          "updatedAt",
+        ],
+        properties: {
+          id: { $ref: "#/components/schemas/BigIntId" },
+          title: { type: "string", example: "梅田で昼ごはん" },
+          date: {
+            type: ["string", "null"],
+            format: "date",
+            example: "2026-07-31",
+          },
+          location: { $ref: "#/components/schemas/Location" },
+          description: {
+            type: ["string", "null"],
+            example: "昼ごはん候補を決める",
+          },
+          inviteUrl: { type: "null", example: null },
+          confirmedCandidateId: { type: "null", example: null },
+          myMember: { $ref: "#/components/schemas/EventMember" },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-07-31T10:00:00.000Z",
+          },
+          updatedAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-07-31T10:00:00.000Z",
+          },
+        },
+      },
+      UpdatedEvent: {
+        type: "object",
+        required: ["id", "title", "date", "location", "description", "updatedAt"],
+        properties: {
+          id: { $ref: "#/components/schemas/BigIntId" },
+          title: { type: "string", example: "梅田で昼ごはん" },
+          date: {
+            type: ["string", "null"],
+            format: "date",
+            example: "2026-07-31",
+          },
+          location: { $ref: "#/components/schemas/Location" },
+          description: {
+            type: ["string", "null"],
+            example: "昼ごはん候補を決める",
+          },
+          updatedAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-07-31T10:00:00.000Z",
           },
         },
       },
