@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { AuthService } from "./application/services/authService.js";
 import { CommentService } from "./application/services/commentService.js";
 import { HealthService } from "./application/services/healthService.js";
+import { ScryptPasswordHasher } from "./infrastructure/auth/passwordHasher.js";
 import { PrismaAuthRepository } from "./infrastructure/prisma/prismaAuthRepository.js";
 import { PrismaCommentRepository } from "./infrastructure/prisma/prismaCommentRepository.js";
 import { PrismaHealthRepository } from "./infrastructure/prisma/prismaHealthRepository.js";
@@ -42,7 +43,8 @@ export function createApp() {
   });
 
   const authRepository = new PrismaAuthRepository(prisma);
-  const authService = new AuthService(authRepository);
+  const passwordHasher = new ScryptPasswordHasher();
+  const authService = new AuthService(authRepository, passwordHasher);
   const commentRepository = new PrismaCommentRepository(prisma);
   const commentService = new CommentService(commentRepository);
   const healthRepository = new PrismaHealthRepository(prisma);

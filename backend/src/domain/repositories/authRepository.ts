@@ -9,8 +9,14 @@ export type AuthUserCredential = AuthUser & {
   passwordHash: string;
 };
 
+export class EmailAlreadyExistsError extends Error {
+  constructor() {
+    super("Email already exists");
+    this.name = "EmailAlreadyExistsError";
+  }
+}
+
 export interface AuthRepository {
-  findUserByEmail(email: string): Promise<{ id: bigint } | null>;
   findUserById(id: bigint): Promise<AuthUser | null>;
   createUser(input: {
     name: string;
