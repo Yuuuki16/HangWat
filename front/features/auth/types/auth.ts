@@ -11,6 +11,11 @@ export type RegisterInput = {
   password: string;
 };
 
+export type LoginInput = {
+  email: string;
+  password: string;
+};
+
 export type ValidationDetail = {
   field: string;
   message: string;
