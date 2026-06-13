@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { mockCandidateComments } from "@/features/events/data/mockCandidateComments";
 import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
 import {
+  cancelCandidateConfirmation,
   confirmCandidate,
   loadCandidates,
   saveCandidates,
@@ -51,6 +52,11 @@ export function CandidateThread({
 
   const handleConfirm = () => {
     confirmCandidate(eventId, candidateId);
+    router.push(`/events/${eventId}`);
+  };
+
+  const handleCancelConfirmation = () => {
+    cancelCandidateConfirmation(eventId, candidateId);
     router.push(`/events/${eventId}`);
   };
 
@@ -150,28 +156,30 @@ export function CandidateThread({
           </span>
         </div>
 
-        <div className="mt-5 flex items-center justify-center gap-8">
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className="rounded-[10px] bg-primary px-4 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            予定確定
-          </button>
-          <button
-            type="button"
-            onClick={openEditor}
-            className="rounded-[10px] bg-primary px-5 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            編集
-          </button>
-          <button
-            type="button"
-            className="rounded-[10px] bg-danger px-5 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
-          >
-            削除
-          </button>
-        </div>
+        {candidate.status === "pending" && (
+          <div className="mt-5 flex items-center justify-center gap-8">
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="rounded-[10px] bg-primary px-4 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              予定確定
+            </button>
+            <button
+              type="button"
+              onClick={openEditor}
+              className="rounded-[10px] bg-primary px-5 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              編集
+            </button>
+            <button
+              type="button"
+              className="rounded-[10px] bg-danger px-5 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+            >
+              削除
+            </button>
+          </div>
+        )}
       </section>
 
       <section aria-label="コメント一覧" className="mt-8 space-y-4">
@@ -207,21 +215,33 @@ export function CandidateThread({
         ))}
       </section>
 
-      <form
-        onSubmit={handleCommentSubmit}
-        className="mb-4 mt-auto pt-8"
-      >
-        <label htmlFor="candidate-comment" className="sr-only">
-          コメント
-        </label>
-        <input
-          id="candidate-comment"
-          value={comment}
-          placeholder="テキスト入力"
-          onChange={(changeEvent) => setComment(changeEvent.target.value)}
-          className="w-full rounded-[12px] border-2 border-primary bg-white px-4 py-2 text-center text-sm text-foreground outline-none placeholder:text-foreground/55 focus:border-foreground"
-        />
-      </form>
+      {candidate.status === "confirmed" ? (
+        <div className="mb-4 mt-auto flex justify-center pt-8">
+          <button
+            type="button"
+            onClick={handleCancelConfirmation}
+            className="rounded-[10px] bg-danger px-6 py-2.5 text-lg text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+          >
+            予定取消
+          </button>
+        </div>
+      ) : (
+        <form
+          onSubmit={handleCommentSubmit}
+          className="mb-4 mt-auto pt-8"
+        >
+          <label htmlFor="candidate-comment" className="sr-only">
+            コメント
+          </label>
+          <input
+            id="candidate-comment"
+            value={comment}
+            placeholder="テキスト入力"
+            onChange={(changeEvent) => setComment(changeEvent.target.value)}
+            className="w-full rounded-[12px] border-2 border-primary bg-white px-4 py-2 text-center text-sm text-foreground outline-none placeholder:text-foreground/55 focus:border-foreground"
+          />
+        </form>
+      )}
 
       {isEditing && (
         <div

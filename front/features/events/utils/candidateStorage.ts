@@ -67,3 +67,16 @@ export const confirmCandidate = (eventId: string, candidateId: string) => {
 
   saveCandidates(eventId, candidates);
 };
+
+export const cancelCandidateConfirmation = (
+  eventId: string,
+  candidateId: string,
+) => {
+  const candidates = loadCandidates(eventId).map((candidate) =>
+    candidate.id === candidateId
+      ? { ...candidate, status: "pending" as const }
+      : candidate,
+  );
+
+  saveCandidates(eventId, candidates);
+};
