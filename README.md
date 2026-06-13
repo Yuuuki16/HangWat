@@ -57,6 +57,8 @@ docker compose up --build
 - Frontend: http://localhost:3000
 - Backend: http://localhost:4000
 - Backend health check: http://localhost:4000/health
+- Swagger UI: http://localhost:4000/docs
+- OpenAPI JSON: http://localhost:4000/openapi.json
 - PostgreSQL: `localhost:5440` (DB クライアントから接続)
 
 PostgreSQL は HTTP ではないため、ブラウザでは表示できません。`psql` などの DB クライアントから接続します。
@@ -149,6 +151,8 @@ pnpm dev:front
 
 ## API Endpoints
 
+- `GET /docs`: Swagger UI
+- `GET /openapi.json`: OpenAPI specification
 - `GET /health`: backend と DB 接続の health check
 - `GET /tasks`: task 一覧を取得
 - `POST /tasks`: task を作成

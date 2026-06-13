@@ -18,7 +18,9 @@ describe("healthRoutes", () => {
     assert.deepEqual(await response.json(), {
       name: "HangWat API",
       endpoints: {
+        docs: "/docs",
         health: "/health",
+        openapi: "/openapi.json",
         tasks: "/tasks",
       },
     });
