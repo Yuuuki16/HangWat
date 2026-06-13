@@ -15,7 +15,7 @@ import { createEventRoutes } from "../src/presentation/routes/eventRoutes.js";
 
 type EventRouteService = Pick<
   EventService,
-  "listEvents" | "createEvent" | "getEventDetail" | "updateEvent"
+  "listEvents" | "createEvent" | "getEventDetail" | "updateEvent" | "deleteEvent"
 >;
 
 const testSessionSecret = "test-secret";
@@ -115,6 +115,9 @@ function createRouteService(
     },
     async updateEvent() {
       return sampleUpdatedEvent;
+    },
+    async deleteEvent() {
+      return;
     },
     ...overrides,
   };
@@ -547,5 +550,100 @@ describe("eventRoutes GET /events/:eventId", () => {
         message: "このイベントを参照する権限がありません",
       },
     });
+  });
+});
+
+describe("eventRoutes DELETE /events/:eventId", () => {
+  it("deletes event and returns 200", async () => {
+    let receivedInput:
+      | Parameters<EventRouteService["deleteEvent"]>[0]
+      | undefined;
+    const app = createEventRoutes(
+      createRouteService({
+        async deleteEvent(input) {
+          receivedInput = input;
+        },
+      }),
+      testSessionSecret,
+    );
+
+    const cookie = await makeSessionCookie("1");
+    const response = await app.request("/events/1", {
+      method: "DELETE",
+      headers: { Cookie: cookie },
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      message: "イベントを削除しました",
+    });
+    assert.equal(receivedInput?.userId, 1n);
+    assert.equal(receivedInput?.eventId, 1n);
+  });
+
+  it("returns 401 without session cookie", async () => {
+    const app = createEventRoutes(createRouteService(), testSessionSecret);
+    const response = await app.request("/events/1", { method: "DELETE" });
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), {
+      error: { code: "UNAUTHORIZED", message: "認証が必要です" },
+    });
+  });
+
+  it("returns 400 with invalid event id", async () => {
+    const app = createEventRoutes(createRouteService(), testSessionSecret);
+    const cookie = await makeSessionCookie("1");
+    const response = await app.request("/events/abc", {
+      method: "DELETE",
+      headers: { Cookie: cookie },
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "入力内容が正しくありません",
+        details: [{ field: "eventId", message: "eventId が不正です" }],
+      },
+    });
+  });
+
+  it("maps service NOT_FOUND to 404", async () => {
+    const app = createEventRoutes(
+      createRouteService({
+        async deleteEvent() {
+          throw new ApplicationError("NOT_FOUND", "イベントが存在しません");
+        },
+      }),
+      testSessionSecret,
+    );
+
+    const cookie = await makeSessionCookie("1");
+    const response = await app.request("/events/999", {
+      method: "DELETE",
+      headers: { Cookie: cookie },
+    });
+
+    assert.equal(response.status, 404);
+  });
+
+  it("maps service FORBIDDEN to 403", async () => {
+    const app = createEventRoutes(
+      createRouteService({
+        async deleteEvent() {
+          throw new ApplicationError("FORBIDDEN", "削除権限がありません");
+        },
+      }),
+      testSessionSecret,
+    );
+
+    const cookie = await makeSessionCookie("1");
+    const response = await app.request("/events/1", {
+      method: "DELETE",
+      headers: { Cookie: cookie },
+    });
+
+    assert.equal(response.status, 403);
   });
 });

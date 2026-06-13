@@ -394,6 +394,50 @@ export class PrismaEventRepository implements EventRepository {
     };
   }
 
+  async deleteEvent(eventId: bigint): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // Comment likes → comments → candidates の順で削除
+      const candidateIds = await tx.scheduleCandidate.findMany({
+        where: { eventId },
+        select: { id: true },
+      });
+      const candidateIdList = candidateIds.map((c) => c.id);
+
+      if (candidateIdList.length > 0) {
+        await tx.commentLike.deleteMany({
+          where: { comment: { candidateId: { in: candidateIdList } } },
+        });
+        await tx.comment.deleteMany({
+          where: { candidateId: { in: candidateIdList } },
+        });
+      }
+
+      // confirmedCandidateId の参照を解除してから candidates 削除
+      await tx.event.update({
+        where: { id: eventId },
+        data: { confirmedCandidateId: null },
+      });
+      await tx.scheduleCandidate.deleteMany({ where: { eventId } });
+
+      // EventMember 関連を削除
+      const memberIds = await tx.eventMember.findMany({
+        where: { eventId },
+        select: { id: true },
+      });
+      const memberIdList = memberIds.map((m) => m.id);
+
+      if (memberIdList.length > 0) {
+        await tx.eventMemberSession.deleteMany({
+          where: { eventMemberId: { in: memberIdList } },
+        });
+      }
+      await tx.eventMember.deleteMany({ where: { eventId } });
+
+      await tx.eventInviteToken.deleteMany({ where: { eventId } });
+      await tx.event.delete({ where: { id: eventId } });
+    });
+  }
+
   private toLocationRecord(
     location: PrismaLocation | null,
   ): EventLocationRecord | null {

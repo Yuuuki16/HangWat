@@ -275,6 +275,67 @@ export const openApiSpec = {
           "500": { $ref: "#/components/responses/InternalServerError" },
         },
       },
+      patch: {
+        summary: "Update event",
+        tags: ["Event"],
+        security: [{ cookieAuth: [] }],
+        parameters: [{ $ref: "#/components/parameters/EventId" }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateEventRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated event",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["event"],
+                  properties: {
+                    event: { $ref: "#/components/schemas/UpdatedEvent" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+      delete: {
+        summary: "Delete event",
+        tags: ["Event"],
+        security: [{ cookieAuth: [] }],
+        parameters: [{ $ref: "#/components/parameters/EventId" }],
+        responses: {
+          "200": {
+            description: "Event deleted",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["message"],
+                  properties: {
+                    message: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
     },
     "/api/events/{eventId}/candidates": {
       post: {
@@ -1036,6 +1097,29 @@ export const openApiSpec = {
             type: "string",
             format: "date-time",
             example: "2026-07-31T10:00:00.000Z",
+          },
+          updatedAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-07-31T10:00:00.000Z",
+          },
+        },
+      },
+      UpdatedEvent: {
+        type: "object",
+        required: ["id", "title", "date", "location", "description", "updatedAt"],
+        properties: {
+          id: { $ref: "#/components/schemas/BigIntId" },
+          title: { type: "string", example: "梅田で昼ごはん" },
+          date: {
+            type: ["string", "null"],
+            format: "date",
+            example: "2026-07-31",
+          },
+          location: { $ref: "#/components/schemas/Location" },
+          description: {
+            type: ["string", "null"],
+            example: "昼ごはん候補を決める",
           },
           updatedAt: {
             type: "string",

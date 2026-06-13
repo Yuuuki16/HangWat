@@ -116,4 +116,5 @@ export interface EventRepository {
   findEventDetailById(eventId: bigint): Promise<EventDetailRecord | null>;
   createEvent(input: EventCreateInput): Promise<EventCreatedRecord>;
   updateEvent(input: EventUpdateInput): Promise<EventUpdatedRecord>;
+  deleteEvent(eventId: bigint): Promise<void>;
 }

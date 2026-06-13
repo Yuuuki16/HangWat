@@ -81,6 +81,10 @@ class FakeEventRepository implements EventRepository {
     };
   }
 
+  async deleteEvent(eventId: bigint): Promise<void> {
+    this.events.delete(key(eventId));
+  }
+
   async createEvent(input: EventCreateInput): Promise<EventCreatedRecord> {
     const user = this.users.get(key(input.userId));
     if (user === undefined) {
@@ -518,6 +522,56 @@ describe("EventService.updateEvent", () => {
           location: null,
           description: null,
         }),
+      "FORBIDDEN",
+    );
+  });
+});
+
+describe("EventService.deleteEvent", () => {
+  it("deletes event successfully", async () => {
+    const repository = createRepository();
+    const service = new EventService(repository);
+
+    await service.deleteEvent({ userId: 1n, eventId: 1n });
+
+    assert.equal(repository.events.has("1"), false);
+  });
+
+  it("returns NOT_FOUND when event does not exist", async () => {
+    const repository = createRepository();
+    const service = new EventService(repository);
+
+    await assertRejectsWithCode(
+      () => service.deleteEvent({ userId: 1n, eventId: 999n }),
+      "NOT_FOUND",
+    );
+  });
+
+  it("returns FORBIDDEN when user is not a member", async () => {
+    const repository = createRepository();
+    const service = new EventService(repository);
+
+    await assertRejectsWithCode(
+      () => service.deleteEvent({ userId: 999n, eventId: 1n }),
+      "FORBIDDEN",
+    );
+  });
+
+  it("returns FORBIDDEN when user is a member but not owner", async () => {
+    const repository = createRepository();
+    const service = new EventService(repository);
+
+    repository.eventMembers.set("8", {
+      id: 8n,
+      eventId: 1n,
+      userId: 2n,
+      displayName: "別ユーザー",
+      role: "MEMBER",
+      user: { id: 2n, name: "別ユーザー", avatarUrl: null },
+    });
+
+    await assertRejectsWithCode(
+      () => service.deleteEvent({ userId: 2n, eventId: 1n }),
       "FORBIDDEN",
     );
   });

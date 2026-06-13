@@ -13,7 +13,7 @@ const sessionCookieName = "session_token";
 
 type EventRouteService = Pick<
   EventService,
-  "listEvents" | "createEvent" | "getEventDetail" | "updateEvent"
+  "listEvents" | "createEvent" | "getEventDetail" | "updateEvent" | "deleteEvent"
 >;
 
 type ValidationDetail = {
@@ -116,6 +116,38 @@ export function createEventRoutes(
         ...body.value,
       });
       return c.json(result, 200);
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.delete("/events/:eventId", async (c) => {
+    const sessionUserId = await getSignedCookie(
+      c,
+      sessionSecret,
+      sessionCookieName,
+    );
+    if (!sessionUserId) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    const userId = parseUserId(sessionUserId);
+    if (userId === null) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    const eventId = parseId(
+      c.req.param("eventId"),
+      "eventId",
+      "eventId が不正です",
+    );
+    if (!eventId.ok) {
+      return validationError(c, [eventId.detail]);
+    }
+
+    try {
+      await eventService.deleteEvent({ userId, eventId: eventId.value });
+      return c.json({ message: "イベントを削除しました" }, 200);
     } catch (error) {
       return handleRouteError(c, error);
     }

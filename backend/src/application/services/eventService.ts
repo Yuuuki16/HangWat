@@ -194,6 +194,26 @@ export class EventService {
     return toEventUpdatedDto(updated);
   }
 
+  async deleteEvent(input: {
+    userId: bigint;
+    eventId: bigint;
+  }): Promise<void> {
+    const event = await this.eventRepository.findEventDetailById(input.eventId);
+    if (event === null) {
+      throw new ApplicationError("NOT_FOUND", "イベントが存在しません");
+    }
+
+    const member = await this.eventRepository.findEventMemberByUserAndEvent(
+      input.eventId,
+      input.userId,
+    );
+    if (member === null || member.role !== "OWNER") {
+      throw new ApplicationError("FORBIDDEN", "削除権限がありません");
+    }
+
+    await this.eventRepository.deleteEvent(input.eventId);
+  }
+
   async getEventDetail(input: {
     eventId: bigint;
     currentMemberId: bigint;
