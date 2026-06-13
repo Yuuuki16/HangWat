@@ -12,6 +12,8 @@ import type {
   EventLocationRecord,
   EventMemberRecord,
   EventRepository,
+  EventUpdateInput,
+  EventUpdatedRecord,
 } from "../../domain/repositories/eventRepository.js";
 
 type DecimalLike = {
@@ -184,6 +186,63 @@ export class PrismaEventRepository implements EventRepository {
       createdAt: result.event.createdAt,
       updatedAt: result.event.updatedAt,
     };
+  }
+
+  async findEventMemberByUserAndEvent(
+    eventId: bigint,
+    userId: bigint,
+  ): Promise<EventMemberRecord | null> {
+    const member = await this.prisma.eventMember.findFirst({
+      where: { eventId, userId },
+      select: this.memberSelect(),
+    });
+    return member === null ? null : this.toEventMemberRecord(member);
+  }
+
+  async updateEvent(input: EventUpdateInput): Promise<EventUpdatedRecord> {
+    return await this.prisma.$transaction(async (tx) => {
+      let locationId: bigint | null = null;
+      if (input.location !== null) {
+        const location = await tx.location.create({
+          data: {
+            name: input.location.name,
+            address: input.location.address,
+            googlePlaceId: input.location.googlePlaceId,
+            latitude: input.location.latitude,
+            longitude: input.location.longitude,
+            googleMapsUrl: input.location.googleMapsUrl,
+          },
+        });
+        locationId = location.id;
+      }
+
+      const event = await tx.event.update({
+        where: { id: input.eventId },
+        data: {
+          title: input.title,
+          eventDate: input.eventDate,
+          locationId,
+          description: input.description,
+        },
+        select: {
+          id: true,
+          title: true,
+          eventDate: true,
+          location: { select: this.locationSelect() },
+          description: true,
+          updatedAt: true,
+        },
+      });
+
+      return {
+        id: event.id,
+        title: event.title,
+        eventDate: event.eventDate,
+        location: this.toLocationRecord(event.location),
+        description: event.description,
+        updatedAt: event.updatedAt,
+      };
+    });
   }
 
   async findEventMemberById(eventMemberId: bigint) {
