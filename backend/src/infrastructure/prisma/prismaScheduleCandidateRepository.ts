@@ -67,6 +67,15 @@ export class PrismaScheduleCandidateRepository
     return event satisfies ScheduleCandidateEvent | null;
   }
 
+  async findScheduleCandidateById(candidateId: bigint) {
+    const candidate = await this.prisma.scheduleCandidate.findUnique({
+      where: { id: candidateId },
+      select: this.scheduleCandidateResponseSelect(),
+    });
+
+    return candidate === null ? null : this.toScheduleCandidateRecord(candidate);
+  }
+
   async createScheduleCandidate(input: {
     eventId: bigint;
     createdByMemberId: bigint;
@@ -108,6 +117,52 @@ export class PrismaScheduleCandidateRepository
           startsAt: input.startsAt,
           endsAt: input.endsAt,
           status: "PROPOSED",
+        },
+        select: this.scheduleCandidateResponseSelect(),
+      });
+    });
+
+    return this.toScheduleCandidateRecord(candidate);
+  }
+
+  async updateScheduleCandidate(input: {
+    candidateId: bigint;
+    title: string;
+    startsAt: Date;
+    endsAt: Date | null;
+    location: ScheduleCandidateLocationInput | null;
+    description: string | null;
+  }) {
+    const candidate = await this.prisma.$transaction(async (tx) => {
+      const location =
+        input.location === null
+          ? null
+          : await tx.location.create({
+              data: {
+                name: input.location.name,
+                address: input.location.address,
+                googlePlaceId: input.location.googlePlaceId,
+                googleMapsUrl: input.location.googleMapsUrl,
+                latitude:
+                  input.location.latitude === null
+                    ? null
+                    : new Prisma.Decimal(input.location.latitude),
+                longitude:
+                  input.location.longitude === null
+                    ? null
+                    : new Prisma.Decimal(input.location.longitude),
+              },
+              select: { id: true },
+            });
+
+      return tx.scheduleCandidate.update({
+        where: { id: input.candidateId },
+        data: {
+          locationId: location?.id ?? null,
+          title: input.title,
+          description: input.description,
+          startsAt: input.startsAt,
+          endsAt: input.endsAt,
         },
         select: this.scheduleCandidateResponseSelect(),
       });

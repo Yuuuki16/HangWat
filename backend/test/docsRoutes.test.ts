@@ -17,6 +17,9 @@ describe("docsRoutes", () => {
     assert.ok(body.paths["/health"]);
     assert.ok(body.paths["/api/events/{eventId}/candidates"]?.post);
     assert.ok(
+      body.paths["/api/events/{eventId}/candidates/{candidateId}"]?.patch,
+    );
+    assert.ok(
       body.paths["/api/events/{eventId}/candidates/{candidateId}/comments"],
     );
     assert.ok(body.paths["/api/comments/{commentId}"]);

@@ -52,9 +52,20 @@ export interface ScheduleCandidateRepository {
     eventMemberId: bigint,
   ): Promise<ScheduleCandidateEventMember | null>;
   findEventById(eventId: bigint): Promise<ScheduleCandidateEvent | null>;
+  findScheduleCandidateById(
+    candidateId: bigint,
+  ): Promise<ScheduleCandidateRecord | null>;
   createScheduleCandidate(input: {
     eventId: bigint;
     createdByMemberId: bigint;
+    title: string;
+    startsAt: Date;
+    endsAt: Date | null;
+    location: ScheduleCandidateLocationInput | null;
+    description: string | null;
+  }): Promise<ScheduleCandidateRecord>;
+  updateScheduleCandidate(input: {
+    candidateId: bigint;
     title: string;
     startsAt: Date;
     endsAt: Date | null;

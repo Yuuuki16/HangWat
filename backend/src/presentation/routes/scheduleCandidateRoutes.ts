@@ -13,7 +13,7 @@ const isoDateTimePattern =
 
 type ScheduleCandidateRouteService = Pick<
   ScheduleCandidateService,
-  "createScheduleCandidate"
+  "createScheduleCandidate" | "updateScheduleCandidate"
 >;
 
 type ValidationDetail = {
@@ -84,6 +84,57 @@ export function createScheduleCandidateRoutes(
         });
 
       return c.json({ candidate }, 201);
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.patch("/events/:eventId/candidates/:candidateId", async (c) => {
+    const eventId = parseId(
+      c.req.param("eventId"),
+      "eventId",
+      "eventId が不正です",
+    );
+    const candidateId = parseId(
+      c.req.param("candidateId"),
+      "candidateId",
+      "candidateId が不正です",
+    );
+    if (!eventId.ok) {
+      return validationError(c, [eventId.detail]);
+    }
+    if (!candidateId.ok) {
+      return validationError(c, [candidateId.detail]);
+    }
+
+    const currentMemberId = validateCurrentMemberHeader(
+      c.req.header("x-event-member-id"),
+    );
+    if (!currentMemberId.ok) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    const body = await validateCreateScheduleCandidateBody(
+      c.req.json.bind(c.req),
+    );
+    if (!body.ok) {
+      return validationError(c, body.details);
+    }
+
+    try {
+      const candidate =
+        await scheduleCandidateService.updateScheduleCandidate({
+          eventId: eventId.value,
+          candidateId: candidateId.value,
+          currentMemberId: currentMemberId.value,
+          title: body.value.title,
+          startAt: body.value.startAt,
+          endAt: body.value.endAt,
+          location: body.value.location,
+          description: body.value.description,
+        });
+
+      return c.json({ candidate }, 200);
     } catch (error) {
       return handleRouteError(c, error);
     }
