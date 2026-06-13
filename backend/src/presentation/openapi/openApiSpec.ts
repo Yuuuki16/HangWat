@@ -217,6 +217,48 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/events/{eventId}/candidates": {
+      post: {
+        summary: "Create a schedule candidate",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/CreateScheduleCandidateRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created schedule candidate",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["candidate"],
+                  properties: {
+                    candidate: {
+                      $ref: "#/components/schemas/ScheduleCandidate",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/api/events/{eventId}/candidates/{candidateId}/comments": {
       get: {
         summary: "List comments for a schedule candidate",
@@ -765,6 +807,39 @@ export const openApiSpec = {
             minLength: 1,
             maxLength: 1000,
             example: "この候補よさそう",
+          },
+        },
+      },
+      CreateScheduleCandidateRequest: {
+        type: "object",
+        required: ["title", "startAt"],
+        properties: {
+          title: {
+            type: "string",
+            minLength: 1,
+            maxLength: 100,
+            example: "一蘭で昼ごはん",
+          },
+          startAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-07-31T13:00:00+09:00",
+          },
+          endAt: {
+            type: ["string", "null"],
+            format: "date-time",
+            example: "2026-07-31T14:00:00+09:00",
+          },
+          location: {
+            oneOf: [
+              { $ref: "#/components/schemas/Location" },
+              { type: "null" },
+            ],
+          },
+          description: {
+            type: ["string", "null"],
+            maxLength: 1000,
+            example: "梅田の一蘭に行く案",
           },
         },
       },
