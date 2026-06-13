@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { setSignedCookie } from "hono/cookie";
+import { deleteCookie, getSignedCookie, setSignedCookie } from "hono/cookie";
 
 import { ApplicationError } from "../../application/errors/applicationError.js";
 import type { AuthService } from "../../application/services/authService.js";
@@ -70,6 +70,21 @@ export function createAuthRoutes(
     } catch (error) {
       return handleRouteError(c, error);
     }
+  });
+
+  app.post("/auth/logout", async (c) => {
+    const sessionUserId = await getSignedCookie(
+      c,
+      sessionSecret,
+      sessionCookieName,
+    );
+    if (!sessionUserId) {
+      return errorResponse(c, "UNAUTHORIZED", "ログインが必要です", 401);
+    }
+
+    deleteCookie(c, sessionCookieName, { path: "/" });
+
+    return c.json({ message: "ログアウトしました" });
   });
 
   return app;

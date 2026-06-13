@@ -72,6 +72,39 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/auth/logout": {
+      post: {
+        summary: "Log out the current user",
+        tags: ["Auth"],
+        responses: {
+          "200": {
+            description: "Logged out",
+            headers: {
+              "Set-Cookie": {
+                description: "セッション Cookie を失効させる Set-Cookie",
+                schema: { type: "string" },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["message"],
+                  properties: {
+                    message: {
+                      type: "string",
+                      example: "ログアウトしました",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/": {
       get: {
         summary: "API information",
