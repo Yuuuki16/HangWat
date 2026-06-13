@@ -3,6 +3,7 @@ import type {
   CandidateStatus,
   EventCandidateRecord,
   EventDetailRecord,
+  EventListRecord,
   EventLocationRecord,
   EventMemberRecord,
   EventRepository,
@@ -15,6 +16,15 @@ type LocationDto = {
   latitude: number | null;
   longitude: number | null;
   googleMapsUrl: string | null;
+};
+
+export type EventListItemDto = {
+  id: string;
+  title: string;
+  date: string | null;
+  location: LocationDto | null;
+  memberCount: number;
+  isConfirmed: boolean;
 };
 
 type EventMemberDto = {
@@ -70,6 +80,18 @@ export type EventDetailDto = {
 export class EventService {
   constructor(private readonly eventRepository: EventRepository) {}
 
+  async listEvents(input: {
+    userId: bigint;
+  }): Promise<{ events: EventListItemDto[] }> {
+    const user = await this.eventRepository.findUserById(input.userId);
+    if (user === null) {
+      throw new ApplicationError("UNAUTHORIZED", "認証が必要です");
+    }
+
+    const events = await this.eventRepository.findEventsByUserId(input.userId);
+    return { events: events.map((event) => this.toEventListItemDto(event)) };
+  }
+
   async getEventDetail(input: {
     eventId: bigint;
     currentMemberId: bigint;
@@ -94,6 +116,17 @@ export class EventService {
     }
 
     return this.toEventDetailDto(event, currentMember);
+  }
+
+  private toEventListItemDto(event: EventListRecord): EventListItemDto {
+    return {
+      id: event.id.toString(),
+      title: event.title,
+      date: event.eventDate === null ? null : formatDate(event.eventDate),
+      location: toLocationDto(event.location),
+      memberCount: event.memberCount,
+      isConfirmed: event.confirmedCandidateId !== null,
+    };
   }
 
   private toEventDetailDto(
@@ -169,28 +202,22 @@ function toEventMemberDto(member: EventMemberRecord): EventMemberDto {
 function toLocationDto(
   location: EventLocationRecord | null,
 ): LocationDto | null {
-  if (location === null) {
-    return null;
-  }
-
   return location;
 }
 
 function toCandidateStatusDto(
   status: CandidateStatus,
 ): "pending" | "confirmed" | "cancelled" {
-  const statusByRecord: Record<
-    CandidateStatus,
-    "pending" | "confirmed" | "cancelled"
-  > = {
-    PROPOSED: "pending",
-    CONFIRMED: "confirmed",
-    REJECTED: "cancelled",
-  };
-
-  return statusByRecord[status];
+  switch (status) {
+    case "PROPOSED":
+      return "pending";
+    case "CONFIRMED":
+      return "confirmed";
+    case "REJECTED":
+      return "cancelled";
+  }
 }
 
-function formatDate(date: Date) {
+function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }

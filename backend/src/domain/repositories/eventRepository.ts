@@ -10,6 +10,15 @@ export type EventLocationRecord = {
   googleMapsUrl: string | null;
 };
 
+export type EventListRecord = {
+  id: bigint;
+  title: string;
+  eventDate: Date | null;
+  location: EventLocationRecord | null;
+  memberCount: number;
+  confirmedCandidateId: bigint | null;
+};
+
 export type EventUserRecord = {
   id: bigint;
   name: string;
@@ -57,6 +66,8 @@ export type EventDetailRecord = {
 };
 
 export interface EventRepository {
+  findUserById(userId: bigint): Promise<{ id: bigint } | null>;
+  findEventsByUserId(userId: bigint): Promise<EventListRecord[]>;
   findEventMemberById(eventMemberId: bigint): Promise<EventMemberRecord | null>;
   findEventDetailById(eventId: bigint): Promise<EventDetailRecord | null>;
 }

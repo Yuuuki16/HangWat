@@ -181,6 +181,33 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/events": {
+      get: {
+        summary: "List events for the authenticated user",
+        parameters: [{ $ref: "#/components/parameters/UserIdHeader" }],
+        responses: {
+          "200": {
+            description: "Events joined by the authenticated user",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["events"],
+                  properties: {
+                    events: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/EventListItem" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/api/events/{eventId}": {
       get: {
         summary: "Get event detail with schedule candidates",
@@ -441,6 +468,12 @@ export const openApiSpec = {
         required: true,
         schema: { $ref: "#/components/schemas/BigIntId" },
       },
+      UserIdHeader: {
+        name: "x-user-id",
+        in: "header",
+        required: true,
+        schema: { $ref: "#/components/schemas/BigIntId" },
+      },
     },
     responses: {
       ValidationError: {
@@ -631,6 +664,29 @@ export const openApiSpec = {
             example: "guest",
           },
           user: { $ref: "#/components/schemas/User" },
+        },
+      },
+      EventListItem: {
+        type: "object",
+        required: [
+          "id",
+          "title",
+          "date",
+          "location",
+          "memberCount",
+          "isConfirmed",
+        ],
+        properties: {
+          id: { $ref: "#/components/schemas/BigIntId" },
+          title: { type: "string", example: "梅田で昼ごはん" },
+          date: {
+            type: ["string", "null"],
+            format: "date",
+            example: "2026-07-31",
+          },
+          location: { $ref: "#/components/schemas/Location" },
+          memberCount: { type: "integer", minimum: 0, example: 2 },
+          isConfirmed: { type: "boolean", example: false },
         },
       },
       EventDetail: {

@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client";
 import type {
   EventCandidateRecord,
   EventDetailRecord,
+  EventListRecord,
   EventLocationRecord,
   EventMemberRecord,
   EventRepository,
@@ -77,6 +78,39 @@ export class PrismaEventRepository implements EventRepository {
     private readonly prisma: PrismaClient,
     private readonly frontendOrigin: string,
   ) {}
+
+  async findUserById(userId: bigint) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+  }
+
+  async findEventsByUserId(userId: bigint): Promise<EventListRecord[]> {
+    const events = await this.prisma.event.findMany({
+      where: { members: { some: { userId } } },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        eventDate: true,
+        location: {
+          select: this.locationSelect(),
+        },
+        _count: { select: { members: true } },
+        confirmedCandidateId: true,
+      },
+    });
+
+    return events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      eventDate: event.eventDate,
+      location: this.toLocationRecord(event.location),
+      memberCount: event._count.members,
+      confirmedCandidateId: event.confirmedCandidateId,
+    }));
+  }
 
   async findEventMemberById(eventMemberId: bigint) {
     const eventMember = await this.prisma.eventMember.findUnique({
