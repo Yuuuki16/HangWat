@@ -61,7 +61,7 @@ export class PrismaScheduleCandidateRepository
   async findEventById(eventId: bigint) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: { id: true },
+      select: { id: true, confirmedCandidateId: true },
     });
 
     return event satisfies ScheduleCandidateEvent | null;
@@ -169,6 +169,22 @@ export class PrismaScheduleCandidateRepository
     });
 
     return this.toScheduleCandidateRecord(candidate);
+  }
+
+  async deleteScheduleCandidateById(candidateId: bigint) {
+    await this.prisma.$transaction(async (tx) => {
+      const comments = await tx.comment.findMany({
+        where: { candidateId },
+        select: { id: true },
+      });
+      const commentIds = comments.map((comment) => comment.id);
+
+      await tx.commentLike.deleteMany({
+        where: { commentId: { in: commentIds } },
+      });
+      await tx.comment.deleteMany({ where: { candidateId } });
+      await tx.scheduleCandidate.delete({ where: { id: candidateId } });
+    });
   }
 
   private scheduleCandidateResponseSelect() {

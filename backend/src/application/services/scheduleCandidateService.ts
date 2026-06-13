@@ -121,6 +121,41 @@ export class ScheduleCandidateService {
     return this.toScheduleCandidateDto(candidate);
   }
 
+  async deleteScheduleCandidate(input: {
+    eventId: bigint;
+    candidateId: bigint;
+    currentMemberId: bigint;
+  }) {
+    const currentMember = await this.resolveCurrentMember(
+      input.currentMemberId,
+    );
+    const event = await this.scheduleCandidateRepository.findEventById(
+      input.eventId,
+    );
+    if (event === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+    this.assertMemberBelongsToEvent(currentMember, event.id);
+
+    const existingCandidate =
+      await this.scheduleCandidateRepository.findScheduleCandidateById(
+        input.candidateId,
+      );
+    if (
+      existingCandidate === null ||
+      existingCandidate.eventId !== event.id
+    ) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+
+    this.assertCanUpdateCandidate(currentMember, existingCandidate);
+    this.assertCanDeleteCandidate(event.confirmedCandidateId, existingCandidate);
+
+    await this.scheduleCandidateRepository.deleteScheduleCandidateById(
+      existingCandidate.id,
+    );
+  }
+
   private async resolveCurrentMember(currentMemberId: bigint) {
     const currentMember =
       await this.scheduleCandidateRepository.findEventMemberById(
@@ -156,6 +191,21 @@ export class ScheduleCandidateService {
       throw new ApplicationError(
         "FORBIDDEN",
         "この操作を行う権限がありません",
+      );
+    }
+  }
+
+  private assertCanDeleteCandidate(
+    confirmedCandidateId: bigint | null,
+    candidate: ScheduleCandidateRecord,
+  ) {
+    if (
+      candidate.status === "CONFIRMED" ||
+      confirmedCandidateId === candidate.id
+    ) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "確定済みの予定候補のため削除できません",
       );
     }
   }

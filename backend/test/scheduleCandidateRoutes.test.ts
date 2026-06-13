@@ -10,7 +10,9 @@ import { createScheduleCandidateRoutes } from "../src/presentation/routes/schedu
 
 type ScheduleCandidateRouteService = Pick<
   ScheduleCandidateService,
-  "createScheduleCandidate" | "updateScheduleCandidate"
+  | "createScheduleCandidate"
+  | "updateScheduleCandidate"
+  | "deleteScheduleCandidate"
 >;
 
 const sampleCandidate: ScheduleCandidateDto = {
@@ -50,6 +52,7 @@ function createRouteService(
     async updateScheduleCandidate() {
       return sampleCandidate;
     },
+    async deleteScheduleCandidate() {},
     ...overrides,
   };
 }
@@ -111,6 +114,28 @@ function patchCandidate(
           description: "開始時間を変更",
         },
       ),
+    },
+  );
+}
+
+function deleteCandidate(
+  app: ReturnType<typeof createScheduleCandidateRoutes>,
+  options: {
+    eventId?: string;
+    candidateId?: string;
+    currentMemberId?: string;
+  } = {},
+) {
+  const headers: Record<string, string> = {};
+  if (options.currentMemberId !== undefined) {
+    headers["x-event-member-id"] = options.currentMemberId;
+  }
+
+  return app.request(
+    `/events/${options.eventId ?? "1"}/candidates/${options.candidateId ?? "10"}`,
+    {
+      method: "DELETE",
+      headers,
     },
   );
 }
@@ -597,6 +622,168 @@ describe("scheduleCandidateRoutes", () => {
       error: {
         code: "NOT_FOUND",
         message: "データが存在しません",
+      },
+    });
+  });
+
+  it("deletes a schedule candidate by creator", async () => {
+    let receivedInput:
+      | Parameters<ScheduleCandidateRouteService["deleteScheduleCandidate"]>[0]
+      | undefined;
+    const app = createScheduleCandidateRoutes(
+      createRouteService({
+        async deleteScheduleCandidate(input) {
+          receivedInput = input;
+        },
+      }),
+    );
+
+    const response = await deleteCandidate(app, { currentMemberId: "5" });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      message: "予定候補を削除しました",
+    });
+    assert.deepEqual(receivedInput, {
+      eventId: 1n,
+      candidateId: 10n,
+      currentMemberId: 5n,
+    });
+  });
+
+  it("deletes a schedule candidate by owner", async () => {
+    let receivedInput:
+      | Parameters<ScheduleCandidateRouteService["deleteScheduleCandidate"]>[0]
+      | undefined;
+    const app = createScheduleCandidateRoutes(
+      createRouteService({
+        async deleteScheduleCandidate(input) {
+          receivedInput = input;
+        },
+      }),
+    );
+
+    const response = await deleteCandidate(app, { currentMemberId: "8" });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(receivedInput, {
+      eventId: 1n,
+      candidateId: 10n,
+      currentMemberId: 8n,
+    });
+  });
+
+  it("returns 401 on delete without x-event-member-id", async () => {
+    const app = createScheduleCandidateRoutes(createRouteService());
+    const response = await deleteCandidate(app);
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "UNAUTHORIZED",
+        message: "認証が必要です",
+      },
+    });
+  });
+
+  const deleteValidationCases: {
+    name: string;
+    request: Parameters<typeof deleteCandidate>[1];
+    details: { field: string; message: string }[];
+  }[] = [
+    {
+      name: "invalid event id",
+      request: { eventId: "abc", candidateId: "10", currentMemberId: "5" },
+      details: [{ field: "eventId", message: "eventId が不正です" }],
+    },
+    {
+      name: "invalid candidate id",
+      request: { eventId: "1", candidateId: "abc", currentMemberId: "5" },
+      details: [{ field: "candidateId", message: "candidateId が不正です" }],
+    },
+  ];
+
+  for (const validationCase of deleteValidationCases) {
+    it(`returns 400 on delete with ${validationCase.name}`, async () => {
+      const app = createScheduleCandidateRoutes(createRouteService());
+      const response = await deleteCandidate(app, validationCase.request);
+
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), {
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "入力内容が正しくありません",
+          details: validationCase.details,
+        },
+      });
+    });
+  }
+
+  it("maps delete forbidden error to common error response", async () => {
+    const app = createScheduleCandidateRoutes(
+      createRouteService({
+        async deleteScheduleCandidate() {
+          throw new ApplicationError(
+            "FORBIDDEN",
+            "この操作を行う権限がありません",
+          );
+        },
+      }),
+    );
+
+    const response = await deleteCandidate(app, { currentMemberId: "5" });
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "FORBIDDEN",
+        message: "この操作を行う権限がありません",
+      },
+    });
+  });
+
+  it("maps delete not found error to common error response", async () => {
+    const app = createScheduleCandidateRoutes(
+      createRouteService({
+        async deleteScheduleCandidate() {
+          throw new ApplicationError("NOT_FOUND", "データが存在しません");
+        },
+      }),
+    );
+
+    const response = await deleteCandidate(app, {
+      candidateId: "999",
+      currentMemberId: "5",
+    });
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "NOT_FOUND",
+        message: "データが存在しません",
+      },
+    });
+  });
+
+  it("maps delete conflict error to common error response", async () => {
+    const app = createScheduleCandidateRoutes(
+      createRouteService({
+        async deleteScheduleCandidate() {
+          throw new ApplicationError(
+            "CONFLICT",
+            "確定済みの予定候補のため削除できません",
+          );
+        },
+      }),
+    );
+
+    const response = await deleteCandidate(app, { currentMemberId: "5" });
+
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "CONFLICT",
+        message: "確定済みの予定候補のため削除できません",
       },
     });
   });

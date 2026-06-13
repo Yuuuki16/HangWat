@@ -1303,6 +1303,7 @@ Error
 
 | Status | Code | 説明 |
 | --- | --- | --- |
+| 400 | VALIDATION_ERROR | 入力値が不正 |
 | 401 | UNAUTHORIZED | 未ログイン、またはローカルトークンが不正 |
 | 403 | FORBIDDEN | 削除権限がない |
 | 404 | NOT_FOUND | イベントまたは予定候補が存在しない |

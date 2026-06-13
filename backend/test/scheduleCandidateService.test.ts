@@ -21,6 +21,7 @@ class FakeScheduleCandidateRepository
   readonly events = new Map<string, ScheduleCandidateEvent>();
   readonly candidates = new Map<string, ScheduleCandidateRecord>();
   readonly locations = new Map<string, ScheduleCandidateLocationInput>();
+  readonly deletedCandidateIds: bigint[] = [];
   nextCandidateId = 10n;
   nextLocationId = 20n;
 
@@ -124,6 +125,11 @@ class FakeScheduleCandidateRepository
 
     this.candidates.set(key(input.candidateId), updatedCandidate);
     return updatedCandidate;
+  }
+
+  async deleteScheduleCandidateById(candidateId: bigint) {
+    this.deletedCandidateIds.push(candidateId);
+    this.candidates.delete(key(candidateId));
   }
 }
 
@@ -517,12 +523,181 @@ describe("ScheduleCandidateService", () => {
       "NOT_FOUND",
     );
   });
+
+  it("deletes a schedule candidate by creator", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    await service.deleteScheduleCandidate({
+      eventId: 1n,
+      candidateId: 10n,
+      currentMemberId: 5n,
+    });
+
+    assert.deepEqual(repository.deletedCandidateIds, [10n]);
+    assert.equal(repository.candidates.has("10"), false);
+  });
+
+  it("deletes a schedule candidate by owner", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    await service.deleteScheduleCandidate({
+      eventId: 1n,
+      candidateId: 10n,
+      currentMemberId: 8n,
+    });
+
+    assert.deepEqual(repository.deletedCandidateIds, [10n]);
+    assert.equal(repository.candidates.has("10"), false);
+  });
+
+  it("rejects unknown current event member on delete as unauthorized", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.deleteScheduleCandidate({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 999n,
+        }),
+      "UNAUTHORIZED",
+    );
+    assert.deepEqual(repository.deletedCandidateIds, []);
+  });
+
+  it("rejects non participant on delete as forbidden", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.deleteScheduleCandidate({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 7n,
+        }),
+      "FORBIDDEN",
+    );
+    assert.deepEqual(repository.deletedCandidateIds, []);
+  });
+
+  it("rejects third party on delete as forbidden", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.deleteScheduleCandidate({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 6n,
+        }),
+      "FORBIDDEN",
+    );
+    assert.deepEqual(repository.deletedCandidateIds, []);
+  });
+
+  it("returns not found when deleting candidate for unknown event", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.deleteScheduleCandidate({
+          eventId: 999n,
+          candidateId: 10n,
+          currentMemberId: 5n,
+        }),
+      "NOT_FOUND",
+    );
+    assert.deepEqual(repository.deletedCandidateIds, []);
+  });
+
+  it("returns not found when deleting unknown candidate", async () => {
+    const repository = createRepository();
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.deleteScheduleCandidate({
+          eventId: 1n,
+          candidateId: 999n,
+          currentMemberId: 5n,
+        }),
+      "NOT_FOUND",
+    );
+    assert.deepEqual(repository.deletedCandidateIds, []);
+  });
+
+  it("returns not found when deleting candidate from another event", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository, { eventId: 2n });
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.deleteScheduleCandidate({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 5n,
+        }),
+      "NOT_FOUND",
+    );
+    assert.deepEqual(repository.deletedCandidateIds, []);
+  });
+
+  it("rejects confirmed candidate on delete as conflict", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository, { status: "CONFIRMED" });
+    const service = new ScheduleCandidateService(repository);
+
+    await assert.rejects(
+      () =>
+        service.deleteScheduleCandidate({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 5n,
+        }),
+      (error) =>
+        error instanceof ApplicationError &&
+        error.code === "CONFLICT" &&
+        error.message === "確定済みの予定候補のため削除できません",
+    );
+    assert.deepEqual(repository.deletedCandidateIds, []);
+  });
+
+  it("rejects event confirmed candidate on delete as conflict", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    repository.events.set("1", { id: 1n, confirmedCandidateId: 10n });
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.deleteScheduleCandidate({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 5n,
+        }),
+      "CONFLICT",
+    );
+    assert.deepEqual(repository.deletedCandidateIds, []);
+  });
 });
 
 function createRepository() {
   const repository = new FakeScheduleCandidateRepository();
-  repository.events.set("1", { id: 1n });
-  repository.events.set("2", { id: 2n });
+  repository.events.set("1", { id: 1n, confirmedCandidateId: null });
+  repository.events.set("2", { id: 2n, confirmedCandidateId: null });
   repository.eventMembers.set("5", {
     id: 5n,
     eventId: 1n,
@@ -557,9 +732,13 @@ function createRepository() {
 
 async function createExistingCandidate(
   repository: FakeScheduleCandidateRepository,
-  options: { eventId?: bigint; createdByMemberId?: bigint } = {},
+  options: {
+    eventId?: bigint;
+    createdByMemberId?: bigint;
+    status?: ScheduleCandidateRecord["status"];
+  } = {},
 ) {
-  return repository.createScheduleCandidate({
+  const candidate = await repository.createScheduleCandidate({
     eventId: options.eventId ?? 1n,
     createdByMemberId: options.createdByMemberId ?? 5n,
     title: "一蘭で昼ごはん",
@@ -575,6 +754,14 @@ async function createExistingCandidate(
     },
     description: null,
   });
+
+  if (options.status !== undefined) {
+    const updatedCandidate = { ...candidate, status: options.status };
+    repository.candidates.set(key(candidate.id), updatedCandidate);
+    return updatedCandidate;
+  }
+
+  return candidate;
 }
 
 function key(id: bigint) {
