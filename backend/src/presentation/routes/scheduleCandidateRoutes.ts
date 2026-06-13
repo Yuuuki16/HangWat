@@ -21,6 +21,11 @@ type ValidationDetail = {
   message: string;
 };
 
+type FieldValidation = {
+  field: string;
+  message: string;
+};
+
 type CreateScheduleCandidateBody = {
   title: string;
   startAt: Date;
@@ -135,10 +140,33 @@ async function validateCreateScheduleCandidateBody(
   }
 
   const details: ValidationDetail[] = [];
-  const title = validateTitle(requestBody.title, details);
-  const startAt = validateDateField(requestBody.startAt, "startAt", details);
-  const endAt = validateOptionalDateField(requestBody.endAt, "endAt", details);
-  const description = validateDescription(requestBody.description, details);
+  const title = validateRequiredString(
+    requestBody.title,
+    {
+      field: "title",
+      message: "タイトルは文字列で指定してください",
+    },
+    "タイトルは必須です",
+    maxTitleLength,
+    `タイトルは${maxTitleLength}文字以内で入力してください`,
+    details,
+  );
+  const startAt = validateDateTime(requestBody.startAt, "startAt", details);
+  const endAt = validateOptionalDateTime(
+    requestBody.endAt,
+    "endAt",
+    details,
+  );
+  const description = validateOptionalString(
+    requestBody.description,
+    {
+      field: "description",
+      message: "説明は文字列で指定してください",
+    },
+    details,
+    maxDescriptionLength,
+    `説明は${maxDescriptionLength}文字以内で入力してください`,
+  );
   const location = validateLocation(requestBody.location, details);
 
   if (startAt !== null && endAt !== null && endAt <= startAt) {
@@ -148,11 +176,8 @@ async function validateCreateScheduleCandidateBody(
     });
   }
 
-  if (details.length > 0) {
+  if (details.length > 0 || title === null || startAt === null) {
     return { ok: false, details };
-  }
-  if (title === null || startAt === null) {
-    throw new Error("validation invariant violated");
   }
 
   return {
@@ -167,30 +192,38 @@ async function validateCreateScheduleCandidateBody(
   };
 }
 
-function validateTitle(value: unknown, details: ValidationDetail[]) {
+function validateRequiredString(
+  value: unknown,
+  typeValidation: FieldValidation,
+  requiredMessage: string,
+  maxLength: number | null,
+  maxLengthMessage: string | null,
+  details: ValidationDetail[],
+) {
   if (typeof value !== "string") {
-    details.push({ field: "title", message: "タイトルは文字列で指定してください" });
+    details.push(typeValidation);
     return null;
   }
 
-  const trimmedTitle = value.trim();
-  if (trimmedTitle.length === 0) {
-    details.push({ field: "title", message: "タイトルは必須です" });
+  const trimmedValue = value.trim();
+  if (trimmedValue.length === 0) {
+    details.push({ field: typeValidation.field, message: requiredMessage });
     return null;
   }
 
-  if (trimmedTitle.length > maxTitleLength) {
-    details.push({
-      field: "title",
-      message: `タイトルは${maxTitleLength}文字以内で入力してください`,
-    });
+  if (
+    maxLength !== null &&
+    maxLengthMessage !== null &&
+    trimmedValue.length > maxLength
+  ) {
+    details.push({ field: typeValidation.field, message: maxLengthMessage });
     return null;
   }
 
-  return trimmedTitle;
+  return trimmedValue;
 }
 
-function validateDateField(
+function validateDateTime(
   value: unknown,
   field: string,
   details: ValidationDetail[],
@@ -209,7 +242,7 @@ function validateDateField(
   return date;
 }
 
-function validateOptionalDateField(
+function validateOptionalDateTime(
   value: unknown,
   field: string,
   details: ValidationDetail[],
@@ -218,36 +251,40 @@ function validateOptionalDateField(
     return null;
   }
 
-  return validateDateField(value, field, details);
+  return validateDateTime(value, field, details);
 }
 
-function validateDescription(value: unknown, details: ValidationDetail[]) {
+function validateOptionalString(
+  value: unknown,
+  typeValidation: FieldValidation,
+  details: ValidationDetail[],
+  maxLength: number | null = null,
+  maxLengthMessage: string | null = null,
+) {
   if (value === undefined || value === null) {
     return null;
   }
 
   if (typeof value !== "string") {
-    details.push({
-      field: "description",
-      message: "説明は文字列で指定してください",
-    });
+    details.push(typeValidation);
     return null;
   }
 
-  const trimmedDescription = value.trim();
-  if (trimmedDescription.length === 0) {
+  const trimmedValue = value.trim();
+  if (trimmedValue.length === 0) {
     return null;
   }
 
-  if (trimmedDescription.length > maxDescriptionLength) {
-    details.push({
-      field: "description",
-      message: `説明は${maxDescriptionLength}文字以内で入力してください`,
-    });
+  if (
+    maxLength !== null &&
+    maxLengthMessage !== null &&
+    trimmedValue.length > maxLength
+  ) {
+    details.push({ field: typeValidation.field, message: maxLengthMessage });
     return null;
   }
 
-  return trimmedDescription;
+  return trimmedValue;
 }
 
 function validateLocation(
@@ -263,26 +300,39 @@ function validateLocation(
     return null;
   }
 
-  const name = validateLocationName(value.name, details);
-  const address = validateOptionalStringField(
+  const name = validateRequiredString(
+    value.name,
+    {
+      field: "location.name",
+      message: "場所名は文字列で指定してください",
+    },
+    "場所名は必須です",
+    null,
+    null,
+    details,
+  );
+  const address = validateOptionalString(
     value.address,
-    "location.address",
-    "住所は文字列で指定してください",
+    { field: "location.address", message: "住所は文字列で指定してください" },
     details,
   );
-  const googlePlaceId = validateOptionalStringField(
+  const googlePlaceId = validateOptionalString(
     value.googlePlaceId,
-    "location.googlePlaceId",
-    "Google Place IDは文字列で指定してください",
+    {
+      field: "location.googlePlaceId",
+      message: "Google Place IDは文字列で指定してください",
+    },
     details,
   );
-  const googleMapsUrl = validateOptionalStringField(
+  const googleMapsUrl = validateOptionalString(
     value.googleMapsUrl,
-    "location.googleMapsUrl",
-    "Google Maps URLは文字列で指定してください",
+    {
+      field: "location.googleMapsUrl",
+      message: "Google Maps URLは文字列で指定してください",
+    },
     details,
   );
-  const latitude = validateOptionalNumberField(
+  const latitude = validateOptionalNumberInRange(
     value.latitude,
     "location.latitude",
     "緯度は数値で指定してください",
@@ -290,7 +340,7 @@ function validateLocation(
     90,
     details,
   );
-  const longitude = validateOptionalNumberField(
+  const longitude = validateOptionalNumberInRange(
     value.longitude,
     "location.longitude",
     "経度は数値で指定してください",
@@ -313,43 +363,7 @@ function validateLocation(
   };
 }
 
-function validateLocationName(value: unknown, details: ValidationDetail[]) {
-  if (typeof value !== "string") {
-    details.push({
-      field: "location.name",
-      message: "場所名は文字列で指定してください",
-    });
-    return null;
-  }
-
-  const trimmedName = value.trim();
-  if (trimmedName.length === 0) {
-    details.push({ field: "location.name", message: "場所名は必須です" });
-    return null;
-  }
-
-  return trimmedName;
-}
-
-function validateOptionalStringField(
-  value: unknown,
-  field: string,
-  message: string,
-  details: ValidationDetail[],
-) {
-  if (value === undefined || value === null) {
-    return null;
-  }
-
-  if (typeof value !== "string") {
-    details.push({ field, message });
-    return null;
-  }
-
-  return value.trim() || null;
-}
-
-function validateOptionalNumberField(
+function validateOptionalNumberInRange(
   value: unknown,
   field: string,
   message: string,

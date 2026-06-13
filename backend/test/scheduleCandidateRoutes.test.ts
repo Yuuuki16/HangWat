@@ -51,6 +51,33 @@ function createRouteService(
   };
 }
 
+function postCandidate(
+  app: ReturnType<typeof createScheduleCandidateRoutes>,
+  options: {
+    eventId?: string;
+    currentMemberId?: string;
+    body?: unknown;
+  } = {},
+) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (options.currentMemberId !== undefined) {
+    headers["x-event-member-id"] = options.currentMemberId;
+  }
+
+  return app.request(`/events/${options.eventId ?? "1"}/candidates`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(
+      options.body ?? {
+        title: "一蘭で昼ごはん",
+        startAt: "2026-07-31T13:00:00+09:00",
+      },
+    ),
+  });
+}
+
 describe("scheduleCandidateRoutes", () => {
   it("creates a schedule candidate with location", async () => {
     let receivedInput:
@@ -65,13 +92,9 @@ describe("scheduleCandidateRoutes", () => {
       }),
     );
 
-    const response = await app.request("/events/1/candidates", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-event-member-id": "5",
-      },
-      body: JSON.stringify({
+    const response = await postCandidate(app, {
+      currentMemberId: "5",
+      body: {
         title: "  一蘭で昼ごはん  ",
         startAt: "2026-07-31T13:00:00+09:00",
         endAt: "2026-07-31T14:00:00+09:00",
@@ -84,7 +107,7 @@ describe("scheduleCandidateRoutes", () => {
           googleMapsUrl: "https://www.google.com/maps/place/...",
         },
         description: "  梅田の一蘭に行く案  ",
-      }),
+      },
     });
 
     assert.equal(response.status, 201);
@@ -125,16 +148,12 @@ describe("scheduleCandidateRoutes", () => {
       }),
     );
 
-    const response = await app.request("/events/1/candidates", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-event-member-id": "5",
-      },
-      body: JSON.stringify({
+    const response = await postCandidate(app, {
+      currentMemberId: "5",
+      body: {
         title: "駅前集合",
         startAt: "2026-07-31T13:00:00+09:00",
-      }),
+      },
     });
 
     assert.equal(response.status, 201);
@@ -159,14 +178,7 @@ describe("scheduleCandidateRoutes", () => {
 
   it("returns 401 without x-event-member-id", async () => {
     const app = createScheduleCandidateRoutes(createRouteService());
-    const response = await app.request("/events/1/candidates", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        title: "一蘭で昼ごはん",
-        startAt: "2026-07-31T13:00:00+09:00",
-      }),
-    });
+    const response = await postCandidate(app);
 
     assert.equal(response.status, 401);
     assert.deepEqual(await response.json(), {
@@ -177,131 +189,83 @@ describe("scheduleCandidateRoutes", () => {
     });
   });
 
-  it("returns 400 with invalid event id", async () => {
-    const app = createScheduleCandidateRoutes(createRouteService());
-    const response = await app.request("/events/abc/candidates", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-event-member-id": "5",
+  const validationCases: {
+    name: string;
+    request: Parameters<typeof postCandidate>[1];
+    details: { field: string; message: string }[];
+  }[] = [
+    {
+      name: "invalid event id",
+      request: { eventId: "abc", currentMemberId: "5" },
+      details: [{ field: "eventId", message: "eventId が不正です" }],
+    },
+    {
+      name: "empty title",
+      request: {
+        currentMemberId: "5",
+        body: {
+          title: "   ",
+          startAt: "2026-07-31T13:00:00+09:00",
+        },
       },
-      body: JSON.stringify({
-        title: "一蘭で昼ごはん",
-        startAt: "2026-07-31T13:00:00+09:00",
-      }),
-    });
+      details: [{ field: "title", message: "タイトルは必須です" }],
+    },
+    {
+      name: "invalid date",
+      request: {
+        currentMemberId: "5",
+        body: {
+          title: "一蘭で昼ごはん",
+          startAt: "invalid-date",
+        },
+      },
+      details: [{ field: "startAt", message: "startAt が不正です" }],
+    },
+    {
+      name: "non ISO date string",
+      request: {
+        currentMemberId: "5",
+        body: {
+          title: "一蘭で昼ごはん",
+          startAt: "2026-07-31",
+        },
+      },
+      details: [{ field: "startAt", message: "startAt が不正です" }],
+    },
+    {
+      name: "endAt is not after startAt",
+      request: {
+        currentMemberId: "5",
+        body: {
+          title: "一蘭で昼ごはん",
+          startAt: "2026-07-31T13:00:00+09:00",
+          endAt: "2026-07-31T13:00:00+09:00",
+        },
+      },
+      details: [
+        {
+          field: "endAt",
+          message: "終了日時は開始日時より後にしてください",
+        },
+      ],
+    },
+  ];
 
-    assert.equal(response.status, 400);
-    assert.deepEqual(await response.json(), {
-      error: {
-        code: "VALIDATION_ERROR",
-        message: "入力内容が正しくありません",
-        details: [{ field: "eventId", message: "eventId が不正です" }],
-      },
-    });
-  });
+  for (const validationCase of validationCases) {
+    it(`returns 400 with ${validationCase.name}`, async () => {
+      const app = createScheduleCandidateRoutes(createRouteService());
+      const response = await postCandidate(app, validationCase.request);
 
-  it("returns 400 with empty title", async () => {
-    const app = createScheduleCandidateRoutes(createRouteService());
-    const response = await app.request("/events/1/candidates", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-event-member-id": "5",
-      },
-      body: JSON.stringify({
-        title: "   ",
-        startAt: "2026-07-31T13:00:00+09:00",
-      }),
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), {
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "入力内容が正しくありません",
+          details: validationCase.details,
+        },
+      });
     });
-
-    assert.equal(response.status, 400);
-    assert.deepEqual(await response.json(), {
-      error: {
-        code: "VALIDATION_ERROR",
-        message: "入力内容が正しくありません",
-        details: [{ field: "title", message: "タイトルは必須です" }],
-      },
-    });
-  });
-
-  it("returns 400 with invalid date", async () => {
-    const app = createScheduleCandidateRoutes(createRouteService());
-    const response = await app.request("/events/1/candidates", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-event-member-id": "5",
-      },
-      body: JSON.stringify({
-        title: "一蘭で昼ごはん",
-        startAt: "invalid-date",
-      }),
-    });
-
-    assert.equal(response.status, 400);
-    assert.deepEqual(await response.json(), {
-      error: {
-        code: "VALIDATION_ERROR",
-        message: "入力内容が正しくありません",
-        details: [{ field: "startAt", message: "startAt が不正です" }],
-      },
-    });
-  });
-
-  it("returns 400 with non ISO date string", async () => {
-    const app = createScheduleCandidateRoutes(createRouteService());
-    const response = await app.request("/events/1/candidates", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-event-member-id": "5",
-      },
-      body: JSON.stringify({
-        title: "一蘭で昼ごはん",
-        startAt: "2026-07-31",
-      }),
-    });
-
-    assert.equal(response.status, 400);
-    assert.deepEqual(await response.json(), {
-      error: {
-        code: "VALIDATION_ERROR",
-        message: "入力内容が正しくありません",
-        details: [{ field: "startAt", message: "startAt が不正です" }],
-      },
-    });
-  });
-
-  it("returns 400 when endAt is not after startAt", async () => {
-    const app = createScheduleCandidateRoutes(createRouteService());
-    const response = await app.request("/events/1/candidates", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-event-member-id": "5",
-      },
-      body: JSON.stringify({
-        title: "一蘭で昼ごはん",
-        startAt: "2026-07-31T13:00:00+09:00",
-        endAt: "2026-07-31T13:00:00+09:00",
-      }),
-    });
-
-    assert.equal(response.status, 400);
-    assert.deepEqual(await response.json(), {
-      error: {
-        code: "VALIDATION_ERROR",
-        message: "入力内容が正しくありません",
-        details: [
-          {
-            field: "endAt",
-            message: "終了日時は開始日時より後にしてください",
-          },
-        ],
-      },
-    });
-  });
+  }
 
   it("maps forbidden error to common error response", async () => {
     const app = createScheduleCandidateRoutes(
@@ -315,17 +279,7 @@ describe("scheduleCandidateRoutes", () => {
       }),
     );
 
-    const response = await app.request("/events/1/candidates", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-event-member-id": "5",
-      },
-      body: JSON.stringify({
-        title: "一蘭で昼ごはん",
-        startAt: "2026-07-31T13:00:00+09:00",
-      }),
-    });
+    const response = await postCandidate(app, { currentMemberId: "5" });
 
     assert.equal(response.status, 403);
     assert.deepEqual(await response.json(), {
@@ -345,16 +299,9 @@ describe("scheduleCandidateRoutes", () => {
       }),
     );
 
-    const response = await app.request("/events/999/candidates", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-event-member-id": "5",
-      },
-      body: JSON.stringify({
-        title: "一蘭で昼ごはん",
-        startAt: "2026-07-31T13:00:00+09:00",
-      }),
+    const response = await postCandidate(app, {
+      eventId: "999",
+      currentMemberId: "5",
     });
 
     assert.equal(response.status, 404);
