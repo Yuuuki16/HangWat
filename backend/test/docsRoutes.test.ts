@@ -15,6 +15,10 @@ describe("docsRoutes", () => {
     assert.equal(body.openapi, "3.1.0");
     assert.equal(body.info.title, "HangWat API");
     assert.ok(body.paths["/health"]);
+    assert.ok(
+      body.paths["/api/events/{eventId}/candidates/{candidateId}/comments"],
+    );
+    assert.ok(body.paths["/api/comments/{commentId}"]);
   });
 
   it("returns Swagger UI page", async () => {
