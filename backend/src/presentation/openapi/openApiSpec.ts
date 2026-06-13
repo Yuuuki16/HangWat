@@ -665,7 +665,6 @@ export const openApiSpec = {
           "401": { $ref: "#/components/responses/Unauthorized" },
           "403": { $ref: "#/components/responses/Forbidden" },
           "404": { $ref: "#/components/responses/NotFound" },
-          "409": { $ref: "#/components/responses/Conflict" },
           "500": { $ref: "#/components/responses/InternalServerError" },
         },
       },
@@ -696,6 +695,7 @@ export const openApiSpec = {
               },
             },
           },
+          "400": { $ref: "#/components/responses/ValidationError" },
           "401": { $ref: "#/components/responses/Unauthorized" },
           "403": { $ref: "#/components/responses/Forbidden" },
           "404": { $ref: "#/components/responses/NotFound" },
@@ -768,6 +768,67 @@ export const openApiSpec = {
           "401": { $ref: "#/components/responses/Unauthorized" },
           "403": { $ref: "#/components/responses/Forbidden" },
           "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/invite-tokens": {
+      post: {
+        summary: "Issue an invite token for an event",
+        tags: ["InviteToken"],
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateInviteTokenRequest" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Invite token issued",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/InviteTokenResponse" },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "409": { $ref: "#/components/responses/Conflict" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/invite-tokens/{tokenId}": {
+      delete: {
+        summary: "Revoke an invite token",
+        tags: ["InviteToken"],
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/TokenId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Invite token revoked",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/MessageResponse" },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "409": { $ref: "#/components/responses/Conflict" },
           "500": { $ref: "#/components/responses/InternalServerError" },
         },
       },
@@ -855,6 +916,12 @@ export const openApiSpec = {
       UserIdHeader: {
         name: "x-user-id",
         in: "header",
+        required: true,
+        schema: { $ref: "#/components/schemas/BigIntId" },
+      },
+      TokenId: {
+        name: "tokenId",
+        in: "path",
         required: true,
         schema: { $ref: "#/components/schemas/BigIntId" },
       },
@@ -1464,6 +1531,70 @@ export const openApiSpec = {
             format: "date-time",
             example: "2026-07-31T10:00:00.000Z",
           },
+        },
+      },
+      CreateInviteTokenRequest: {
+        type: "object",
+        required: ["expiresAt"],
+        properties: {
+          expiresAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-08-01T00:00:00+09:00",
+          },
+        },
+      },
+      InviteTokenResponse: {
+        type: "object",
+        required: ["inviteToken"],
+        properties: {
+          inviteToken: {
+            type: "object",
+            required: [
+              "id",
+              "eventId",
+              "inviteToken",
+              "url",
+              "expiresAt",
+              "revokedAt",
+              "createdAt",
+            ],
+            properties: {
+              id: { type: "string", example: "1" },
+              eventId: { type: "string", example: "1" },
+              inviteToken: {
+                type: "string",
+                format: "uuid",
+                example: "abc123",
+              },
+              url: {
+                type: "string",
+                example: "http://localhost:3000/invite/abc123",
+              },
+              expiresAt: {
+                type: "string",
+                format: "date-time",
+                example: "2026-08-01T00:00:00.000Z",
+              },
+              revokedAt: {
+                type: ["string", "null"],
+                format: "date-time",
+                example: null,
+              },
+              createdAt: {
+                type: "string",
+                format: "date-time",
+                example: "2026-07-31T10:00:00.000Z",
+              },
+            },
+          },
+        },
+      },
+      MessageResponse: {
+        type: "object",
+        required: ["message"],
+        properties: {
+          message: { type: "string", example: "招待URLを無効化しました" },
         },
       },
       ErrorResponse: {
