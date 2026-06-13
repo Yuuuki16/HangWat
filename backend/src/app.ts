@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { HealthService } from "./application/services/healthService.js";
 import { PrismaHealthRepository } from "./infrastructure/prisma/prismaHealthRepository.js";
 import { prisma } from "./infrastructure/prisma/prismaClient.js";
+import { createDocsRoutes } from "./presentation/routes/docsRoutes.js";
 import { createHealthRoutes } from "./presentation/routes/healthRoutes.js";
 
 export function createApp() {
@@ -24,6 +25,7 @@ export function createApp() {
   const healthRepository = new PrismaHealthRepository(prisma);
   const healthService = new HealthService(healthRepository);
 
+  app.route("/", createDocsRoutes());
   app.route("/", createHealthRoutes(healthService));
 
   return app;
