@@ -247,7 +247,7 @@ async function validateEventBody(
     if (
       typeof requestBody.date !== "string" ||
       !/^\d{4}-\d{2}-\d{2}$/.test(requestBody.date) ||
-      isNaN(Date.parse(requestBody.date))
+      !isValidCalendarDate(requestBody.date)
     ) {
       details.push({
         field: "date",
@@ -381,4 +381,14 @@ function errorResponse(
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isValidCalendarDate(dateStr: string): boolean {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return (
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day
+  );
 }

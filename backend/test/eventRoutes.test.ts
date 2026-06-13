@@ -267,6 +267,24 @@ describe("eventRoutes POST /events", () => {
     assert.ok(body.error.details.some((d: { field: string }) => d.field === "date"));
   });
 
+  it("returns 400 when date is a nonexistent calendar date", async () => {
+    const app = createEventRoutes(createRouteService(), testSessionSecret);
+    const cookie = await makeSessionCookie("1");
+    const response = await app.request("/events", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+      },
+      body: JSON.stringify({ title: "テスト", date: "2026-02-30" }),
+    });
+
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.error.code, "VALIDATION_ERROR");
+    assert.ok(body.error.details.some((d: { field: string }) => d.field === "date"));
+  });
+
   it("maps service UNAUTHORIZED to 401", async () => {
     const app = createEventRoutes(
       createRouteService({
