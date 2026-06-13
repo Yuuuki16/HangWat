@@ -66,14 +66,13 @@ model EventInviteToken {
 }
 
 model EventMember {
-  id          BigInt   @id @default(autoincrement())
+  id          BigInt          @id @default(autoincrement())
   eventId     BigInt
   userId      BigInt?
   displayName String
-  role        String
-  memberType  String
-  createdAt   DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  role        EventMemberRole
+  createdAt   DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @db.Timestamptz(6)
 
   event              Event                @relation(fields: [eventId], references: [id])
   user               User?                @relation(fields: [userId], references: [id])
@@ -100,17 +99,17 @@ model EventMemberSession {
 }
 
 model ScheduleCandidate {
-  id                BigInt    @id @default(autoincrement())
+  id                BigInt                  @id @default(autoincrement())
   eventId           BigInt
   createdByMemberId BigInt
   locationId        BigInt?
   title             String
   description       String?
-  startsAt          DateTime  @db.Timestamptz(6)
-  endsAt            DateTime? @db.Timestamptz(6)
-  status            String
-  createdAt         DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @db.Timestamptz(6)
+  startsAt          DateTime                @db.Timestamptz(6)
+  endsAt            DateTime?               @db.Timestamptz(6)
+  status            ScheduleCandidateStatus
+  createdAt         DateTime                @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime                @updatedAt @db.Timestamptz(6)
 
   event            Event       @relation("EventCandidates", fields: [eventId], references: [id])
   createdByMember  EventMember @relation(fields: [createdByMemberId], references: [id])
@@ -142,4 +141,15 @@ model CommentLike {
   eventMember EventMember @relation(fields: [eventMemberId], references: [id])
 
   @@unique([commentId, eventMemberId])
+}
+
+enum EventMemberRole {
+  OWNER
+  MEMBER
+}
+
+enum ScheduleCandidateStatus {
+  PROPOSED
+  CONFIRMED
+  REJECTED
 }
