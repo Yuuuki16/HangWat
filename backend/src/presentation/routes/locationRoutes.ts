@@ -9,9 +9,15 @@ const maxPostgresBigInt = 9_223_372_036_854_775_807n;
 const maxUrlLength = 2048;
 const sessionCookieName = "session_token";
 
+const maxGooglePlaceIdLength = 300;
+const maxSearchInputLength = 200;
+
 type LocationRouteService = Pick<
   LocationService,
-  "resolveGoogleMapsUrl" | "resolveEventGoogleMapsUrl"
+  | "resolveGoogleMapsUrl"
+  | "resolveEventGoogleMapsUrl"
+  | "getGooglePlaceAutocomplete"
+  | "getGooglePlaceDetails"
 >;
 
 type ValidationDetail = {
@@ -86,6 +92,90 @@ export function createLocationRoutes(
         eventId: eventId.value,
         currentMemberId: currentMemberId.value,
         url: body.value.url,
+      });
+
+      return c.json({ location });
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.get("/events/:eventId/locations/google-place-autocomplete", async (c) => {
+    const eventId = parseId(
+      c.req.param("eventId"),
+      "eventId",
+      "eventId が不正です",
+    );
+    if (!eventId.ok) {
+      return validationError(c, [eventId.detail]);
+    }
+
+    const currentMemberId = validateCurrentMemberHeader(
+      c.req.header("x-event-member-id"),
+    );
+    if (!currentMemberId.ok) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    const searchInput = c.req.query("input")?.trim() ?? "";
+    if (searchInput.length === 0) {
+      return validationError(c, [
+        { field: "input", message: "検索文字列は必須です" },
+      ]);
+    }
+    if (searchInput.length > maxSearchInputLength) {
+      return validationError(c, [
+        { field: "input", message: "検索文字列が長すぎます" },
+      ]);
+    }
+
+    try {
+      const predictions = await locationService.getGooglePlaceAutocomplete({
+        eventId: eventId.value,
+        currentMemberId: currentMemberId.value,
+        searchInput,
+      });
+
+      return c.json({ predictions });
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.get("/events/:eventId/locations/google-place-details", async (c) => {
+    const eventId = parseId(
+      c.req.param("eventId"),
+      "eventId",
+      "eventId が不正です",
+    );
+    if (!eventId.ok) {
+      return validationError(c, [eventId.detail]);
+    }
+
+    const currentMemberId = validateCurrentMemberHeader(
+      c.req.header("x-event-member-id"),
+    );
+    if (!currentMemberId.ok) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    const googlePlaceId = c.req.query("googlePlaceId")?.trim() ?? "";
+    if (googlePlaceId.length === 0) {
+      return validationError(c, [
+        { field: "googlePlaceId", message: "Google Place ID は必須です" },
+      ]);
+    }
+    if (googlePlaceId.length > maxGooglePlaceIdLength) {
+      return validationError(c, [
+        { field: "googlePlaceId", message: "Google Place ID が不正です" },
+      ]);
+    }
+
+    try {
+      const location = await locationService.getGooglePlaceDetails({
+        eventId: eventId.value,
+        currentMemberId: currentMemberId.value,
+        googlePlaceId,
       });
 
       return c.json({ location });

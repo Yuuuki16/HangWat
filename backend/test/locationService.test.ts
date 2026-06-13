@@ -11,6 +11,11 @@ import type {
   GoogleMapsUrlResolver,
   ResolvedGoogleMapsLocation,
 } from "../src/domain/services/googleMapsUrlResolver.js";
+import type {
+  GooglePlaceDetails,
+  GooglePlacePrediction,
+  GooglePlacesClient,
+} from "../src/domain/services/googlePlacesClient.js";
 
 class FakeGoogleMapsUrlResolver implements GoogleMapsUrlResolver {
   result: ResolvedGoogleMapsLocation | null = {
@@ -26,6 +31,36 @@ class FakeGoogleMapsUrlResolver implements GoogleMapsUrlResolver {
   async resolve(url: string) {
     this.resolvedUrls.push(url);
     return this.result;
+  }
+}
+
+class FakeGooglePlacesClient implements GooglePlacesClient {
+  predictions: GooglePlacePrediction[] = [
+    {
+      googlePlaceId: "ChIJyyyy",
+      name: "一蘭 梅田店",
+      address: "大阪府大阪市北区梅田1丁目",
+    },
+  ];
+  details: GooglePlaceDetails | null = {
+    name: "一蘭 梅田店",
+    address: "大阪府大阪市北区梅田1丁目",
+    googlePlaceId: "ChIJyyyy",
+    latitude: 34.701111,
+    longitude: 135.500111,
+    googleMapsUrl: "https://www.google.com/maps/place/ichiran",
+  };
+  autocompleteInputs: string[] = [];
+  detailsInputs: string[] = [];
+
+  async autocomplete(input: string) {
+    this.autocompleteInputs.push(input);
+    return this.predictions;
+  }
+
+  async getDetails(googlePlaceId: string) {
+    this.detailsInputs.push(googlePlaceId);
+    return this.details;
   }
 }
 
@@ -61,10 +96,21 @@ function createRepository() {
   return repository;
 }
 
+function createService(
+  resolver?: FakeGoogleMapsUrlResolver,
+  placesClient?: FakeGooglePlacesClient,
+) {
+  return new LocationService(
+    resolver ?? new FakeGoogleMapsUrlResolver(),
+    createRepository(),
+    placesClient ?? new FakeGooglePlacesClient(),
+  );
+}
+
 describe("LocationService", () => {
   it("resolves Google Maps URL for logged-in user use case", async () => {
     const resolver = new FakeGoogleMapsUrlResolver();
-    const service = new LocationService(resolver, createRepository());
+    const service = createService(resolver);
 
     const location = await service.resolveGoogleMapsUrl({
       url: "https://maps.app.goo.gl/xxxxxx",
@@ -77,7 +123,7 @@ describe("LocationService", () => {
   it("returns not found when location cannot be resolved", async () => {
     const resolver = new FakeGoogleMapsUrlResolver();
     resolver.result = null;
-    const service = new LocationService(resolver, createRepository());
+    const service = createService(resolver);
 
     await assert.rejects(
       () =>
@@ -90,7 +136,7 @@ describe("LocationService", () => {
 
   it("resolves Google Maps URL for an event member", async () => {
     const resolver = new FakeGoogleMapsUrlResolver();
-    const service = new LocationService(resolver, createRepository());
+    const service = createService(resolver);
 
     const location = await service.resolveEventGoogleMapsUrl({
       eventId: 1n,
@@ -105,10 +151,7 @@ describe("LocationService", () => {
   });
 
   it("returns unauthorized when current member is unknown", async () => {
-    const service = new LocationService(
-      new FakeGoogleMapsUrlResolver(),
-      createRepository(),
-    );
+    const service = createService();
 
     await assert.rejects(
       () =>
@@ -122,10 +165,7 @@ describe("LocationService", () => {
   });
 
   it("returns not found when event does not exist", async () => {
-    const service = new LocationService(
-      new FakeGoogleMapsUrlResolver(),
-      createRepository(),
-    );
+    const service = createService();
 
     await assert.rejects(
       () =>
@@ -139,10 +179,7 @@ describe("LocationService", () => {
   });
 
   it("returns forbidden when current member belongs to another event", async () => {
-    const service = new LocationService(
-      new FakeGoogleMapsUrlResolver(),
-      createRepository(),
-    );
+    const service = createService();
 
     await assert.rejects(
       () =>
@@ -150,6 +187,123 @@ describe("LocationService", () => {
           eventId: 2n,
           currentMemberId: 10n,
           url: "https://www.google.com/maps/place/osaka",
+        }),
+      { name: "ApplicationError", code: "FORBIDDEN" },
+    );
+  });
+
+  it("returns Google Place autocomplete predictions for event member", async () => {
+    const placesClient = new FakeGooglePlacesClient();
+    const service = createService(undefined, placesClient);
+
+    const result = await service.getGooglePlaceAutocomplete({
+      eventId: 1n,
+      currentMemberId: 10n,
+      searchInput: "一蘭",
+    });
+
+    assert.equal(result.length, 1);
+    assert.equal(result[0].googlePlaceId, "ChIJyyyy");
+    assert.equal(result[0].name, "一蘭 梅田店");
+    assert.deepEqual(placesClient.autocompleteInputs, ["一蘭"]);
+  });
+
+  it("returns unauthorized when current member is unknown (autocomplete)", async () => {
+    const service = createService();
+
+    await assert.rejects(
+      () =>
+        service.getGooglePlaceAutocomplete({
+          eventId: 1n,
+          currentMemberId: 999n,
+          searchInput: "一蘭",
+        }),
+      { name: "ApplicationError", code: "UNAUTHORIZED" },
+    );
+  });
+
+  it("returns not found when event does not exist (autocomplete)", async () => {
+    const service = createService();
+
+    await assert.rejects(
+      () =>
+        service.getGooglePlaceAutocomplete({
+          eventId: 999n,
+          currentMemberId: 10n,
+          searchInput: "一蘭",
+        }),
+      { name: "ApplicationError", code: "NOT_FOUND" },
+    );
+  });
+
+  it("returns forbidden when current member belongs to another event (autocomplete)", async () => {
+    const service = createService();
+
+    await assert.rejects(
+      () =>
+        service.getGooglePlaceAutocomplete({
+          eventId: 2n,
+          currentMemberId: 10n,
+          searchInput: "一蘭",
+        }),
+      { name: "ApplicationError", code: "FORBIDDEN" },
+    );
+  });
+
+  it("returns Google Place details for event member", async () => {
+    const placesClient = new FakeGooglePlacesClient();
+    const service = createService(undefined, placesClient);
+
+    const location = await service.getGooglePlaceDetails({
+      eventId: 1n,
+      currentMemberId: 10n,
+      googlePlaceId: "ChIJyyyy",
+    });
+
+    assert.equal(location.name, "一蘭 梅田店");
+    assert.equal(location.latitude, 34.701111);
+    assert.deepEqual(placesClient.detailsInputs, ["ChIJyyyy"]);
+  });
+
+  it("returns not found when place details are null", async () => {
+    const placesClient = new FakeGooglePlacesClient();
+    placesClient.details = null;
+    const service = createService(undefined, placesClient);
+
+    await assert.rejects(
+      () =>
+        service.getGooglePlaceDetails({
+          eventId: 1n,
+          currentMemberId: 10n,
+          googlePlaceId: "ChIJzzzz",
+        }),
+      { name: "ApplicationError", code: "NOT_FOUND" },
+    );
+  });
+
+  it("returns unauthorized when current member is unknown (place details)", async () => {
+    const service = createService();
+
+    await assert.rejects(
+      () =>
+        service.getGooglePlaceDetails({
+          eventId: 1n,
+          currentMemberId: 999n,
+          googlePlaceId: "ChIJyyyy",
+        }),
+      { name: "ApplicationError", code: "UNAUTHORIZED" },
+    );
+  });
+
+  it("returns forbidden when current member belongs to another event (place details)", async () => {
+    const service = createService();
+
+    await assert.rejects(
+      () =>
+        service.getGooglePlaceDetails({
+          eventId: 2n,
+          currentMemberId: 10n,
+          googlePlaceId: "ChIJyyyy",
         }),
       { name: "ApplicationError", code: "FORBIDDEN" },
     );

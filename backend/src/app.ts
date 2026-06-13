@@ -10,6 +10,7 @@ import { LocationService } from "./application/services/locationService.js";
 import { ScheduleCandidateService } from "./application/services/scheduleCandidateService.js";
 import { ScryptPasswordHasher } from "./infrastructure/auth/passwordHasher.js";
 import { FetchGoogleMapsUrlResolver } from "./infrastructure/googleMaps/fetchGoogleMapsUrlResolver.js";
+import { GooglePlacesApiClient } from "./infrastructure/googleMaps/googlePlacesApiClient.js";
 import { PrismaAuthRepository } from "./infrastructure/prisma/prismaAuthRepository.js";
 import { PrismaCommentRepository } from "./infrastructure/prisma/prismaCommentRepository.js";
 import { PrismaEventMemberRepository } from "./infrastructure/prisma/prismaEventMemberRepository.js";
@@ -67,10 +68,13 @@ export function createApp() {
   const eventService = new EventService(eventRepository);
   const eventMemberRepository = new PrismaEventMemberRepository(prisma);
   const eventMemberService = new EventMemberService(eventMemberRepository);
+  const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY ?? "";
   const googleMapsUrlResolver = new FetchGoogleMapsUrlResolver();
+  const googlePlacesClient = new GooglePlacesApiClient(googleMapsApiKey);
   const locationService = new LocationService(
     googleMapsUrlResolver,
     eventMemberRepository,
+    googlePlacesClient,
   );
   const scheduleCandidateRepository = new PrismaScheduleCandidateRepository(
     prisma,
