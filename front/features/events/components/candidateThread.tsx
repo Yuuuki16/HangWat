@@ -1,11 +1,15 @@
 "use client";
 
-import { Clock3, Heart, MapPin } from "lucide-react";
+import { Clock3, Heart, MapPin, X } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { mockCandidateComments } from "@/features/events/data/mockCandidateComments";
 import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
-import { loadCandidates } from "@/features/events/utils/candidateStorage";
+import {
+  loadCandidates,
+  saveCandidates,
+  sortCandidatesByTime,
+} from "@/features/events/utils/candidateStorage";
 
 type CandidateThreadProps = {
   eventId: string;
@@ -19,6 +23,12 @@ export function CandidateThread({
   const [candidate, setCandidate] = useState<ScheduleCandidate | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [comment, setComment] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editTimeError, setEditTimeError] = useState("");
+  const editTimeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
@@ -34,6 +44,67 @@ export function CandidateThread({
   const handleCommentSubmit = (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
     setComment("");
+  };
+
+  const openEditor = () => {
+    if (!candidate) {
+      return;
+    }
+
+    setEditTitle(candidate.title);
+    setEditTime(candidate.time);
+    setEditLocation(candidate.location);
+    setEditTimeError("");
+    setIsEditing(true);
+  };
+
+  const handleEditSubmit = (formEvent: FormEvent<HTMLFormElement>) => {
+    formEvent.preventDefault();
+
+    const candidates = loadCandidates(eventId);
+    const hasSameTime = candidates.some(
+      (item) => item.id !== candidateId && item.time === editTime,
+    );
+
+    if (hasSameTime) {
+      setEditTimeError("同じ時間の予定がすでにあります");
+      return;
+    }
+
+    const updatedCandidates = sortCandidatesByTime(
+      candidates.map((item) =>
+        item.id === candidateId
+          ? {
+              ...item,
+              title: editTitle,
+              time: editTime,
+              location: editLocation,
+            }
+          : item,
+      ),
+    );
+    const updatedCandidate =
+      updatedCandidates.find((item) => item.id === candidateId) ?? null;
+
+    saveCandidates(eventId, updatedCandidates);
+    setCandidate(updatedCandidate);
+    setIsEditing(false);
+  };
+
+  const openEditTimePicker = () => {
+    const timeInput = editTimeInputRef.current;
+
+    if (!timeInput) {
+      return;
+    }
+
+    timeInput.focus();
+
+    try {
+      timeInput.showPicker();
+    } catch {
+      timeInput.click();
+    }
   };
 
   if (!isLoaded) {
@@ -80,6 +151,7 @@ export function CandidateThread({
           </button>
           <button
             type="button"
+            onClick={openEditor}
             className="rounded-[10px] bg-primary px-5 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             編集
@@ -141,6 +213,120 @@ export function CandidateThread({
           className="w-full rounded-[12px] border-2 border-primary bg-white px-4 py-2 text-center text-sm text-foreground outline-none placeholder:text-foreground/55 focus:border-foreground"
         />
       </form>
+
+      {isEditing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-7 py-10"
+          role="presentation"
+          onMouseDown={() => setIsEditing(false)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="candidate-edit-title"
+            className="relative w-full max-w-sm rounded-[16px] border-2 border-primary bg-background px-9 py-7 shadow-xl"
+            onMouseDown={(mouseEvent) => mouseEvent.stopPropagation()}
+          >
+            <button
+              type="button"
+              aria-label="予定編集モーダルを閉じる"
+              onClick={() => setIsEditing(false)}
+              className="absolute right-3 top-3 rounded-full p-1 text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-2 focus-visible:outline-foreground"
+            >
+              <X aria-hidden="true" size={20} />
+            </button>
+
+            <h2 id="candidate-edit-title" className="sr-only">
+              予定候補を編集
+            </h2>
+
+            <form className="space-y-7" onSubmit={handleEditSubmit}>
+              <label className="block text-primary">
+                <span>タイトル</span>
+                <input
+                  required
+                  value={editTitle}
+                  placeholder="ここに入力"
+                  onChange={(changeEvent) =>
+                    setEditTitle(changeEvent.target.value)
+                  }
+                  className="mt-1 w-full border-b border-primary bg-transparent px-3 py-2 text-foreground outline-none placeholder:text-foreground/55 focus:border-b-2 focus:border-foreground"
+                />
+              </label>
+
+              <div className="block text-primary">
+                <label htmlFor="candidate-edit-time">時間</label>
+                <div className="relative mt-1">
+                  <input
+                    ref={editTimeInputRef}
+                    id="candidate-edit-time"
+                    type="time"
+                    required
+                    value={editTime}
+                    aria-describedby={
+                      editTimeError ? "candidate-edit-time-error" : undefined
+                    }
+                    aria-invalid={Boolean(editTimeError)}
+                    onChange={(changeEvent) => {
+                      setEditTime(changeEvent.target.value);
+                      setEditTimeError("");
+                    }}
+                    className={`candidate-time-input w-full border-b bg-transparent px-3 py-2 pr-10 text-foreground outline-none focus:border-b-2 focus:border-foreground ${
+                      editTimeError ? "border-danger" : "border-primary"
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    aria-label="時間を選択"
+                    onClick={openEditTimePicker}
+                    className="absolute right-1 top-1/2 flex -translate-y-1/2 rounded-full p-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground"
+                  >
+                    <Clock3 aria-hidden="true" size={18} />
+                  </button>
+                </div>
+                {editTimeError && (
+                  <span
+                    id="candidate-edit-time-error"
+                    role="alert"
+                    className="mt-1 block text-sm text-danger"
+                  >
+                    {editTimeError}
+                  </span>
+                )}
+              </div>
+
+              <label className="block text-primary">
+                <span>場所</span>
+                <div className="relative mt-1">
+                  <input
+                    required
+                    value={editLocation}
+                    placeholder="ここに入力"
+                    onChange={(changeEvent) =>
+                      setEditLocation(changeEvent.target.value)
+                    }
+                    className="w-full border-b border-primary bg-transparent px-3 py-2 pr-10 text-foreground outline-none placeholder:text-foreground/55 focus:border-b-2 focus:border-foreground"
+                  />
+                  <MapPin
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-foreground"
+                    size={18}
+                  />
+                </div>
+              </label>
+
+              <div className="flex justify-center pt-1">
+                <button
+                  type="submit"
+                  className="rounded-[10px] bg-primary px-7 py-2 text-xl text-white shadow-[0_4px_3px_rgb(0_0_0/0.28)] transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+                >
+                  変更
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
