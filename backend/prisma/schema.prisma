@@ -12,100 +12,103 @@ model User {
   name         String
   email        String   @unique
   passwordHash String
-  colorUrl     String?
+  avatarUrl    String?
   createdAt    DateTime @default(now()) @db.Timestamptz(6)
   updatedAt    DateTime @updatedAt @db.Timestamptz(6)
 
-  events             Event[]
-  eventMembers       EventMember[]
-  scheduleCandidates ScheduleCandidate[]
-  comments           Comment[]
-  commentLikes       CommentLike[]
-}
-
-model EventUrl {
-  id                   BigInt   @id @default(autoincrement())
-  inviteToken          String   @unique @db.Uuid
-  inviteTokenCreatedAt DateTime @db.Timestamptz(6)
-  inviteTokenExpiresAt DateTime @db.Timestamptz(6)
-
-  event Event?
+  events       Event[]
+  eventMembers EventMember[]
 }
 
 model Event {
   id                   BigInt    @id @default(autoincrement())
-  createdBy            BigInt
+  createdByUserId      BigInt
   title                String
   location             String?
   description          String?
   eventDate            DateTime? @db.Date
-  eventUrlId           BigInt    @unique
   confirmedCandidateId BigInt?   @unique
   createdAt            DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt            DateTime  @updatedAt @db.Timestamptz(6)
 
-  creator            User                @relation(fields: [createdBy], references: [id])
-  eventUrl           EventUrl            @relation(fields: [eventUrlId], references: [id])
+  creator            User                @relation(fields: [createdByUserId], references: [id])
   confirmedCandidate ScheduleCandidate?  @relation("ConfirmedCandidate", fields: [confirmedCandidateId], references: [id])
+  inviteTokens       EventInviteToken[]
   members            EventMember[]
   scheduleCandidates ScheduleCandidate[] @relation("EventCandidates")
 }
 
-model EventMember {
-  id        BigInt   @id @default(autoincrement())
-  eventId   BigInt
-  userId    BigInt
-  role      String
-  status    String
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+model EventInviteToken {
+  id          BigInt    @id @default(autoincrement())
+  eventId     BigInt
+  inviteToken String    @unique @db.Uuid
+  expiresAt   DateTime  @db.Timestamptz(6)
+  revokedAt   DateTime? @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
 
   event Event @relation(fields: [eventId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
+}
+
+model EventMember {
+  id               BigInt   @id @default(autoincrement())
+  eventId          BigInt
+  userId           BigInt?
+  displayName      String
+  role             String
+  memberType       String
+  sessionTokenHash String?
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
+
+  event              Event               @relation(fields: [eventId], references: [id])
+  user               User?               @relation(fields: [userId], references: [id])
+  scheduleCandidates ScheduleCandidate[]
+  comments           Comment[]
+  commentLikes       CommentLike[]
 
   @@unique([eventId, userId])
 }
 
 model ScheduleCandidate {
-  id          BigInt   @id @default(autoincrement())
-  eventId     BigInt
-  createdBy   BigInt
-  title       String
-  location    String?
-  description String?
-  startsAt    DateTime @db.Timestamptz(6)
-  endsAt      DateTime @db.Timestamptz(6)
-  status      String
-  createdAt   DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  id                BigInt   @id @default(autoincrement())
+  eventId           BigInt
+  createdByMemberId BigInt
+  title             String
+  location          String?
+  description       String?
+  startsAt          DateTime @db.Timestamptz(6)
+  endsAt            DateTime @db.Timestamptz(6)
+  status            String
+  createdAt         DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(6)
 
-  event            Event     @relation("EventCandidates", fields: [eventId], references: [id])
-  creator          User      @relation(fields: [createdBy], references: [id])
+  event            Event       @relation("EventCandidates", fields: [eventId], references: [id])
+  createdByMember  EventMember @relation(fields: [createdByMemberId], references: [id])
   comments         Comment[]
-  confirmedByEvent Event?    @relation("ConfirmedCandidate")
+  confirmedByEvent Event?      @relation("ConfirmedCandidate")
 }
 
 model Comment {
-  id          BigInt   @id @default(autoincrement())
-  candidateId BigInt
-  userId      BigInt
-  body        String
-  createdAt   DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  id            BigInt   @id @default(autoincrement())
+  candidateId   BigInt
+  eventMemberId BigInt
+  body          String
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
 
-  candidate ScheduleCandidate @relation(fields: [candidateId], references: [id])
-  user      User              @relation(fields: [userId], references: [id])
-  likes     CommentLike[]
+  candidate   ScheduleCandidate @relation(fields: [candidateId], references: [id])
+  eventMember EventMember       @relation(fields: [eventMemberId], references: [id])
+  likes       CommentLike[]
 }
 
 model CommentLike {
-  id        BigInt   @id @default(autoincrement())
-  commentId BigInt
-  userId    BigInt
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  id            BigInt   @id @default(autoincrement())
+  commentId     BigInt
+  eventMemberId BigInt
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
 
-  comment Comment @relation(fields: [commentId], references: [id])
-  user    User    @relation(fields: [userId], references: [id])
+  comment     Comment     @relation(fields: [commentId], references: [id])
+  eventMember EventMember @relation(fields: [eventMemberId], references: [id])
 
-  @@unique([commentId, userId])
+  @@unique([commentId, eventMemberId])
 }
