@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import { ApplicationError } from "../src/application/errors/applicationError.js";
 import type {
+  ScheduleCandidateConfirmationDto,
   ScheduleCandidateDto,
   ScheduleCandidateService,
 } from "../src/application/services/scheduleCandidateService.js";
@@ -13,6 +14,7 @@ type ScheduleCandidateRouteService = Pick<
   | "createScheduleCandidate"
   | "updateScheduleCandidate"
   | "deleteScheduleCandidate"
+  | "confirmScheduleCandidate"
 >;
 
 const sampleCandidate: ScheduleCandidateDto = {
@@ -42,6 +44,17 @@ const sampleCandidate: ScheduleCandidateDto = {
   updatedAt: "2026-07-31T10:00:00.000Z",
 };
 
+const sampleConfirmation: ScheduleCandidateConfirmationDto = {
+  event: {
+    id: "1",
+    confirmedCandidateId: "10",
+  },
+  candidate: {
+    id: "10",
+    status: "confirmed",
+  },
+};
+
 function createRouteService(
   overrides: Partial<ScheduleCandidateRouteService> = {},
 ): ScheduleCandidateRouteService {
@@ -53,6 +66,9 @@ function createRouteService(
       return sampleCandidate;
     },
     async deleteScheduleCandidate() {},
+    async confirmScheduleCandidate() {
+      return sampleConfirmation;
+    },
     ...overrides,
   };
 }
@@ -135,6 +151,28 @@ function deleteCandidate(
     `/events/${options.eventId ?? "1"}/candidates/${options.candidateId ?? "10"}`,
     {
       method: "DELETE",
+      headers,
+    },
+  );
+}
+
+function confirmCandidate(
+  app: ReturnType<typeof createScheduleCandidateRoutes>,
+  options: {
+    eventId?: string;
+    candidateId?: string;
+    currentMemberId?: string;
+  } = {},
+) {
+  const headers: Record<string, string> = {};
+  if (options.currentMemberId !== undefined) {
+    headers["x-event-member-id"] = options.currentMemberId;
+  }
+
+  return app.request(
+    `/events/${options.eventId ?? "1"}/candidates/${options.candidateId ?? "10"}/confirm`,
+    {
+      method: "POST",
       headers,
     },
   );
@@ -784,6 +822,145 @@ describe("scheduleCandidateRoutes", () => {
       error: {
         code: "CONFLICT",
         message: "確定済みの予定候補のため削除できません",
+      },
+    });
+  });
+
+  it("confirms a schedule candidate by owner", async () => {
+    let receivedInput:
+      | Parameters<ScheduleCandidateRouteService["confirmScheduleCandidate"]>[0]
+      | undefined;
+    const app = createScheduleCandidateRoutes(
+      createRouteService({
+        async confirmScheduleCandidate(input) {
+          receivedInput = input;
+          return sampleConfirmation;
+        },
+      }),
+    );
+
+    const response = await confirmCandidate(app, { currentMemberId: "8" });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), sampleConfirmation);
+    assert.deepEqual(receivedInput, {
+      eventId: 1n,
+      candidateId: 10n,
+      currentMemberId: 8n,
+    });
+  });
+
+  it("returns 401 on confirm without x-event-member-id", async () => {
+    const app = createScheduleCandidateRoutes(createRouteService());
+    const response = await confirmCandidate(app);
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "UNAUTHORIZED",
+        message: "認証が必要です",
+      },
+    });
+  });
+
+  const confirmValidationCases: {
+    name: string;
+    request: Parameters<typeof confirmCandidate>[1];
+    details: { field: string; message: string }[];
+  }[] = [
+    {
+      name: "invalid event id",
+      request: { eventId: "abc", candidateId: "10", currentMemberId: "8" },
+      details: [{ field: "eventId", message: "eventId が不正です" }],
+    },
+    {
+      name: "invalid candidate id",
+      request: { eventId: "1", candidateId: "abc", currentMemberId: "8" },
+      details: [{ field: "candidateId", message: "candidateId が不正です" }],
+    },
+  ];
+
+  for (const validationCase of confirmValidationCases) {
+    it(`returns 400 on confirm with ${validationCase.name}`, async () => {
+      const app = createScheduleCandidateRoutes(createRouteService());
+      const response = await confirmCandidate(app, validationCase.request);
+
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), {
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "入力内容が正しくありません",
+          details: validationCase.details,
+        },
+      });
+    });
+  }
+
+  it("maps confirm forbidden error to common error response", async () => {
+    const app = createScheduleCandidateRoutes(
+      createRouteService({
+        async confirmScheduleCandidate() {
+          throw new ApplicationError(
+            "FORBIDDEN",
+            "この操作を行う権限がありません",
+          );
+        },
+      }),
+    );
+
+    const response = await confirmCandidate(app, { currentMemberId: "5" });
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "FORBIDDEN",
+        message: "この操作を行う権限がありません",
+      },
+    });
+  });
+
+  it("maps confirm not found error to common error response", async () => {
+    const app = createScheduleCandidateRoutes(
+      createRouteService({
+        async confirmScheduleCandidate() {
+          throw new ApplicationError("NOT_FOUND", "データが存在しません");
+        },
+      }),
+    );
+
+    const response = await confirmCandidate(app, {
+      candidateId: "999",
+      currentMemberId: "8",
+    });
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "NOT_FOUND",
+        message: "データが存在しません",
+      },
+    });
+  });
+
+  it("maps confirm conflict error to common error response", async () => {
+    const app = createScheduleCandidateRoutes(
+      createRouteService({
+        async confirmScheduleCandidate() {
+          throw new ApplicationError(
+            "CONFLICT",
+            "すでに別の予定が確定しています",
+          );
+        },
+      }),
+    );
+
+    const response = await confirmCandidate(app, { currentMemberId: "8" });
+
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "CONFLICT",
+        message: "すでに別の予定が確定しています",
       },
     });
   });

@@ -362,6 +362,34 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/events/{eventId}/candidates/{candidateId}/confirm": {
+      post: {
+        summary: "Confirm a schedule candidate",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/CandidateId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Confirmed schedule candidate",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ScheduleCandidateConfirmation",
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "409": { $ref: "#/components/responses/Conflict" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/api/events/{eventId}/candidates/{candidateId}/comments": {
       get: {
         summary: "List comments for a schedule candidate",
@@ -874,6 +902,38 @@ export const openApiSpec = {
             type: "string",
             format: "date-time",
             example: "2026-07-31T10:00:00.000Z",
+          },
+        },
+      },
+      ScheduleCandidateConfirmation: {
+        type: "object",
+        required: ["event", "candidate"],
+        properties: {
+          event: {
+            type: "object",
+            required: ["id", "confirmedCandidateId"],
+            properties: {
+              id: { $ref: "#/components/schemas/BigIntId" },
+              confirmedCandidateId: {
+                oneOf: [
+                  { $ref: "#/components/schemas/BigIntId" },
+                  { type: "null" },
+                ],
+                example: "10",
+              },
+            },
+          },
+          candidate: {
+            type: "object",
+            required: ["id", "status"],
+            properties: {
+              id: { $ref: "#/components/schemas/BigIntId" },
+              status: {
+                type: "string",
+                enum: ["pending", "confirmed", "cancelled"],
+                example: "confirmed",
+              },
+            },
           },
         },
       },

@@ -48,6 +48,17 @@ export type ScheduleCandidateRecord = {
   updatedAt: Date;
 };
 
+export type ScheduleCandidateConfirmationRecord = {
+  event: {
+    id: bigint;
+    confirmedCandidateId: bigint | null;
+  };
+  candidate: {
+    id: bigint;
+    status: ScheduleCandidateStatus;
+  };
+};
+
 export interface ScheduleCandidateRepository {
   findEventMemberById(
     eventMemberId: bigint,
@@ -74,4 +85,8 @@ export interface ScheduleCandidateRepository {
     description: string | null;
   }): Promise<ScheduleCandidateRecord>;
   deleteScheduleCandidateById(candidateId: bigint): Promise<void>;
+  confirmScheduleCandidate(input: {
+    eventId: bigint;
+    candidateId: bigint;
+  }): Promise<ScheduleCandidateConfirmationRecord>;
 }

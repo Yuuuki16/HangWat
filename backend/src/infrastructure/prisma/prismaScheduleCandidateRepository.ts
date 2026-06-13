@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 
 import type {
+  ScheduleCandidateConfirmationRecord,
   ScheduleCandidateEvent,
   ScheduleCandidateEventMember,
   ScheduleCandidateLocationInput,
@@ -185,6 +186,28 @@ export class PrismaScheduleCandidateRepository
       await tx.comment.deleteMany({ where: { candidateId } });
       await tx.scheduleCandidate.deleteMany({ where: { id: candidateId } });
     });
+  }
+
+  async confirmScheduleCandidate(input: {
+    eventId: bigint;
+    candidateId: bigint;
+  }) {
+    const confirmation = await this.prisma.$transaction(async (tx) => {
+      const event = await tx.event.update({
+        where: { id: input.eventId },
+        data: { confirmedCandidateId: input.candidateId },
+        select: { id: true, confirmedCandidateId: true },
+      });
+      const candidate = await tx.scheduleCandidate.update({
+        where: { id: input.candidateId },
+        data: { status: "CONFIRMED" },
+        select: { id: true, status: true },
+      });
+
+      return { event, candidate };
+    });
+
+    return confirmation satisfies ScheduleCandidateConfirmationRecord;
   }
 
   private scheduleCandidateResponseSelect() {

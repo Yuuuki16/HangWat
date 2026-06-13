@@ -16,6 +16,7 @@ type ScheduleCandidateRouteService = Pick<
   | "createScheduleCandidate"
   | "updateScheduleCandidate"
   | "deleteScheduleCandidate"
+  | "confirmScheduleCandidate"
 >;
 
 type ValidationDetail = {
@@ -175,6 +176,45 @@ export function createScheduleCandidateRoutes(
       });
 
       return c.json({ message: "予定候補を削除しました" }, 200);
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.post("/events/:eventId/candidates/:candidateId/confirm", async (c) => {
+    const eventId = parseId(
+      c.req.param("eventId"),
+      "eventId",
+      "eventId が不正です",
+    );
+    const candidateId = parseId(
+      c.req.param("candidateId"),
+      "candidateId",
+      "candidateId が不正です",
+    );
+    if (!eventId.ok) {
+      return validationError(c, [eventId.detail]);
+    }
+    if (!candidateId.ok) {
+      return validationError(c, [candidateId.detail]);
+    }
+
+    const currentMemberId = validateCurrentMemberHeader(
+      c.req.header("x-event-member-id"),
+    );
+    if (!currentMemberId.ok) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    try {
+      const confirmation =
+        await scheduleCandidateService.confirmScheduleCandidate({
+          eventId: eventId.value,
+          candidateId: candidateId.value,
+          currentMemberId: currentMemberId.value,
+        });
+
+      return c.json(confirmation, 200);
     } catch (error) {
       return handleRouteError(c, error);
     }

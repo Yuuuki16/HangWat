@@ -23,6 +23,10 @@ describe("docsRoutes", () => {
       body.paths["/api/events/{eventId}/candidates/{candidateId}"]?.delete,
     );
     assert.ok(
+      body.paths["/api/events/{eventId}/candidates/{candidateId}/confirm"]
+        ?.post,
+    );
+    assert.ok(
       body.paths["/api/events/{eventId}/candidates/{candidateId}/comments"],
     );
     assert.ok(body.paths["/api/comments/{commentId}"]);
