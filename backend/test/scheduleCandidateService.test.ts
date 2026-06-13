@@ -32,6 +32,10 @@ class FakeScheduleCandidateRepository
     return this.events.get(key(eventId)) ?? null;
   }
 
+  async findScheduleCandidateById(candidateId: bigint) {
+    return this.candidates.get(key(candidateId)) ?? null;
+  }
+
   async createScheduleCandidate(input: {
     eventId: bigint;
     createdByMemberId: bigint;
@@ -83,6 +87,43 @@ class FakeScheduleCandidateRepository
 
     this.candidates.set(key(id), candidate);
     return candidate;
+  }
+
+  async updateScheduleCandidate(input: {
+    candidateId: bigint;
+    title: string;
+    startsAt: Date;
+    endsAt: Date | null;
+    location: ScheduleCandidateLocationInput | null;
+    description: string | null;
+  }) {
+    const existingCandidate = this.candidates.get(key(input.candidateId));
+    assert.ok(existingCandidate);
+
+    const locationId = input.location === null ? null : this.nextLocationId;
+    if (input.location !== null && locationId !== null) {
+      this.nextLocationId += 1n;
+      this.locations.set(key(locationId), input.location);
+    }
+
+    const updatedCandidate: ScheduleCandidateRecord = {
+      ...existingCandidate,
+      title: input.title,
+      startsAt: input.startsAt,
+      endsAt: input.endsAt,
+      location:
+        input.location === null || locationId === null
+          ? null
+          : {
+              id: locationId,
+              ...input.location,
+            },
+      description: input.description,
+      updatedAt: new Date("2026-07-31T10:30:00.000Z"),
+    };
+
+    this.candidates.set(key(input.candidateId), updatedCandidate);
+    return updatedCandidate;
   }
 }
 
@@ -253,6 +294,229 @@ describe("ScheduleCandidateService", () => {
     );
     assert.equal(repository.candidates.size, 0);
   });
+
+  it("updates a schedule candidate by creator", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    const candidate = await service.updateScheduleCandidate({
+      eventId: 1n,
+      candidateId: 10n,
+      currentMemberId: 5n,
+      title: "  一蘭で昼ごはん  ",
+      startAt: new Date("2026-07-31T13:30:00+09:00"),
+      endAt: new Date("2026-07-31T14:30:00+09:00"),
+      location: null,
+      description: "  開始時間を変更  ",
+    });
+
+    assert.equal(repository.candidates.get("10")?.title, "一蘭で昼ごはん");
+    assert.equal(repository.candidates.get("10")?.description, "開始時間を変更");
+    assert.equal(candidate.startAt, "2026-07-31T04:30:00.000Z");
+    assert.equal(candidate.endAt, "2026-07-31T05:30:00.000Z");
+    assert.equal(candidate.location, null);
+    assert.equal(candidate.updatedAt, "2026-07-31T10:30:00.000Z");
+  });
+
+  it("updates a schedule candidate by owner", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    const candidate = await service.updateScheduleCandidate({
+      eventId: 1n,
+      candidateId: 10n,
+      currentMemberId: 8n,
+      title: "owner更新",
+      startAt: new Date("2026-07-31T13:30:00+09:00"),
+      endAt: null,
+      location: null,
+      description: null,
+    });
+
+    assert.equal(candidate.title, "owner更新");
+  });
+
+  it("replaces location when updating a schedule candidate", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    const candidate = await service.updateScheduleCandidate({
+      eventId: 1n,
+      candidateId: 10n,
+      currentMemberId: 5n,
+      title: "一蘭で昼ごはん",
+      startAt: new Date("2026-07-31T13:30:00+09:00"),
+      endAt: null,
+      location: {
+        name: "一蘭 新店舗",
+        address: "大阪府大阪市北区...",
+        googlePlaceId: null,
+        latitude: null,
+        longitude: null,
+        googleMapsUrl: null,
+      },
+      description: null,
+    });
+
+    assert.deepEqual(repository.locations.get("21"), {
+      name: "一蘭 新店舗",
+      address: "大阪府大阪市北区...",
+      googlePlaceId: null,
+      latitude: null,
+      longitude: null,
+      googleMapsUrl: null,
+    });
+    assert.equal(repository.candidates.get("10")?.location?.id, 21n);
+    assert.equal(candidate.location?.name, "一蘭 新店舗");
+  });
+
+  it("clears location when updating with null location", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    const candidate = await service.updateScheduleCandidate({
+      eventId: 1n,
+      candidateId: 10n,
+      currentMemberId: 5n,
+      title: "駅前集合",
+      startAt: new Date("2026-07-31T13:30:00+09:00"),
+      endAt: null,
+      location: null,
+      description: null,
+    });
+
+    assert.equal(repository.candidates.get("10")?.location, null);
+    assert.equal(candidate.location, null);
+  });
+
+  it("rejects unknown current event member on update as unauthorized", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.updateScheduleCandidate({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 999n,
+          title: "一蘭で昼ごはん",
+          startAt: new Date("2026-07-31T13:30:00+09:00"),
+          endAt: null,
+          location: null,
+          description: null,
+        }),
+      "UNAUTHORIZED",
+    );
+  });
+
+  it("rejects non participant on update as forbidden", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.updateScheduleCandidate({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 7n,
+          title: "一蘭で昼ごはん",
+          startAt: new Date("2026-07-31T13:30:00+09:00"),
+          endAt: null,
+          location: null,
+          description: null,
+        }),
+      "FORBIDDEN",
+    );
+  });
+
+  it("rejects third party on update as forbidden", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.updateScheduleCandidate({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 6n,
+          title: "一蘭で昼ごはん",
+          startAt: new Date("2026-07-31T13:30:00+09:00"),
+          endAt: null,
+          location: null,
+          description: null,
+        }),
+      "FORBIDDEN",
+    );
+  });
+
+  it("returns not found when updating candidate for unknown event", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository);
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.updateScheduleCandidate({
+          eventId: 999n,
+          candidateId: 10n,
+          currentMemberId: 5n,
+          title: "一蘭で昼ごはん",
+          startAt: new Date("2026-07-31T13:30:00+09:00"),
+          endAt: null,
+          location: null,
+          description: null,
+        }),
+      "NOT_FOUND",
+    );
+  });
+
+  it("returns not found when updating unknown candidate", async () => {
+    const repository = createRepository();
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.updateScheduleCandidate({
+          eventId: 1n,
+          candidateId: 999n,
+          currentMemberId: 5n,
+          title: "一蘭で昼ごはん",
+          startAt: new Date("2026-07-31T13:30:00+09:00"),
+          endAt: null,
+          location: null,
+          description: null,
+        }),
+      "NOT_FOUND",
+    );
+  });
+
+  it("returns not found when updating candidate from another event", async () => {
+    const repository = createRepository();
+    await createExistingCandidate(repository, { eventId: 2n });
+    const service = new ScheduleCandidateService(repository);
+
+    await assertRejectsWithCode(
+      () =>
+        service.updateScheduleCandidate({
+          eventId: 1n,
+          candidateId: 10n,
+          currentMemberId: 5n,
+          title: "一蘭で昼ごはん",
+          startAt: new Date("2026-07-31T13:30:00+09:00"),
+          endAt: null,
+          location: null,
+          description: null,
+        }),
+      "NOT_FOUND",
+    );
+  });
 });
 
 function createRepository() {
@@ -280,8 +544,37 @@ function createRepository() {
     displayName: "別イベント",
     role: "MEMBER",
   });
+  repository.eventMembers.set("8", {
+    id: 8n,
+    eventId: 1n,
+    userId: 2n,
+    displayName: "owner",
+    role: "OWNER",
+  });
 
   return repository;
+}
+
+async function createExistingCandidate(
+  repository: FakeScheduleCandidateRepository,
+  options: { eventId?: bigint; createdByMemberId?: bigint } = {},
+) {
+  return repository.createScheduleCandidate({
+    eventId: options.eventId ?? 1n,
+    createdByMemberId: options.createdByMemberId ?? 5n,
+    title: "一蘭で昼ごはん",
+    startsAt: new Date("2026-07-31T13:00:00+09:00"),
+    endsAt: null,
+    location: {
+      name: "一蘭 梅田店",
+      address: "大阪府大阪市北区...",
+      googlePlaceId: null,
+      latitude: null,
+      longitude: null,
+      googleMapsUrl: null,
+    },
+    description: null,
+  });
 }
 
 function key(id: bigint) {

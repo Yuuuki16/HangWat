@@ -74,6 +74,53 @@ export class ScheduleCandidateService {
     return this.toScheduleCandidateDto(candidate);
   }
 
+  async updateScheduleCandidate(input: {
+    eventId: bigint;
+    candidateId: bigint;
+    currentMemberId: bigint;
+    title: string;
+    startAt: Date;
+    endAt: Date | null;
+    location: ScheduleCandidateLocationInput | null;
+    description: string | null;
+  }) {
+    const currentMember = await this.resolveCurrentMember(
+      input.currentMemberId,
+    );
+    const event = await this.scheduleCandidateRepository.findEventById(
+      input.eventId,
+    );
+    if (event === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+    this.assertMemberBelongsToEvent(currentMember, event.id);
+
+    const existingCandidate =
+      await this.scheduleCandidateRepository.findScheduleCandidateById(
+        input.candidateId,
+      );
+    if (
+      existingCandidate === null ||
+      existingCandidate.eventId !== event.id
+    ) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+
+    this.assertCanUpdateCandidate(currentMember, existingCandidate);
+
+    const candidate =
+      await this.scheduleCandidateRepository.updateScheduleCandidate({
+        candidateId: existingCandidate.id,
+        title: input.title.trim(),
+        startsAt: input.startAt,
+        endsAt: input.endAt,
+        location: input.location,
+        description: input.description?.trim() || null,
+      });
+
+    return this.toScheduleCandidateDto(candidate);
+  }
+
   private async resolveCurrentMember(currentMemberId: bigint) {
     const currentMember =
       await this.scheduleCandidateRepository.findEventMemberById(
@@ -91,6 +138,21 @@ export class ScheduleCandidateService {
     eventId: bigint,
   ) {
     if (currentMember.eventId !== eventId) {
+      throw new ApplicationError(
+        "FORBIDDEN",
+        "この操作を行う権限がありません",
+      );
+    }
+  }
+
+  private assertCanUpdateCandidate(
+    currentMember: ScheduleCandidateEventMember,
+    candidate: ScheduleCandidateRecord,
+  ) {
+    if (
+      currentMember.id !== candidate.createdByMemberId &&
+      currentMember.role !== "OWNER"
+    ) {
       throw new ApplicationError(
         "FORBIDDEN",
         "この操作を行う権限がありません",

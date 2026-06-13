@@ -259,6 +259,49 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/events/{eventId}/candidates/{candidateId}": {
+      patch: {
+        summary: "Update a schedule candidate",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/CandidateId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/CreateScheduleCandidateRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated schedule candidate",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["candidate"],
+                  properties: {
+                    candidate: {
+                      $ref: "#/components/schemas/ScheduleCandidate",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/api/events/{eventId}/candidates/{candidateId}/comments": {
       get: {
         summary: "List comments for a schedule candidate",
