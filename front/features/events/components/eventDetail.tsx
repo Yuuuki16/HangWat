@@ -220,17 +220,6 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
             </div>
           </dl>
 
-          <p
-            aria-live="polite"
-            className={`mt-1 min-h-4 text-right text-xs ${
-              copyStatus === "error" ? "text-danger" : "text-foreground/60"
-            }`}
-          >
-            {copyStatus === "success" && "リンクをコピーしました"}
-            {copyStatus === "error" &&
-              "コピーできませんでした。URLを直接コピーしてください"}
-          </p>
-
           <button
             type="button"
             onClick={openEditor}
@@ -267,7 +256,11 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
           )}
         </section>
 
-        <div className="flex w-full max-w-md flex-1 flex-col justify-center py-9">
+        <div
+          className={`flex w-full max-w-md flex-1 flex-col py-9 ${
+            candidates.length > 0 ? "justify-start" : "justify-center"
+          }`}
+        >
           {candidates.length > 0 ? (
             <>
               <ol className="ml-4">
@@ -347,9 +340,13 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
                   />
                 </li>
               </ol>
-              <p className="mt-7 text-center text-xl tracking-[0.08em] text-foreground">
-                他の予定も作成しましょう
-              </p>
+              {candidates.length < 3 && (
+                <div className="flex flex-1 items-center justify-center">
+                  <p className="text-center text-xl tracking-[0.08em] text-foreground">
+                    他の予定も作成しましょう
+                  </p>
+                </div>
+              )}
             </>
           ) : (
             <p className="text-center text-xl tracking-[0.08em] text-foreground">
@@ -404,13 +401,13 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
                   value={title}
                   placeholder="ここに入力"
                   onChange={(changeEvent) => setTitle(changeEvent.target.value)}
-                  className="mt-1 w-full border-b border-primary bg-transparent px-5 py-2 text-lg text-foreground outline-none placeholder:text-foreground/65 focus:border-b-2"
+                  className="mt-1 w-full border-b border-primary bg-transparent px-5 py-2 text-lg text-foreground outline-none placeholder:text-foreground/65 focus:border-b-2 focus:border-foreground"
                 />
               </label>
 
               <label className="block text-primary">
                 <span className="text-lg">日時</span>
-                <div className="relative mt-1 border-b border-primary focus-within:border-b-2">
+                <div className="relative mt-1 border-b border-primary focus-within:border-b-2 focus-within:border-foreground">
                   <span className="block py-2 pl-5 pr-12 text-lg text-foreground">
                     {editingDate}
                   </span>
@@ -441,7 +438,7 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
                     onChange={(changeEvent) =>
                       setLocation(changeEvent.target.value)
                     }
-                    className="w-full border-b border-primary bg-transparent py-2 pl-5 pr-12 text-lg text-foreground outline-none placeholder:text-foreground/65 focus:border-b-2"
+                    className="w-full border-b border-primary bg-transparent py-2 pl-5 pr-12 text-lg text-foreground outline-none placeholder:text-foreground/65 focus:border-b-2 focus:border-foreground"
                   />
                   <MapPin
                     aria-hidden="true"
@@ -458,7 +455,7 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
                   value={details}
                   placeholder="ここに入力"
                   onChange={(changeEvent) => setDetails(changeEvent.target.value)}
-                  className="mt-1 w-full border-b border-primary bg-transparent px-5 py-2 text-lg text-foreground outline-none placeholder:text-foreground/65 focus:border-b-2"
+                  className="mt-1 w-full border-b border-primary bg-transparent px-5 py-2 text-lg text-foreground outline-none placeholder:text-foreground/65 focus:border-b-2 focus:border-foreground"
                 />
               </label>
 
