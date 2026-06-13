@@ -1,7 +1,7 @@
-import { LoginForm } from "@/features/auth/components/loginForm";
+import { SignupForm } from "@/features/auth/components/signupForm";
 import { SignupPrompt } from "@/features/auth/components/signupPrompt";
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-10">
       <div className="flex w-full max-w-md flex-col gap-8">
@@ -14,11 +14,11 @@ export default function LoginPage() {
       </div>
 
       <div className="mt-12 w-full max-w-md">
-        <LoginForm />
+        <SignupForm />
       </div>
 
       <div className="mt-14 w-full max-w-md">
-        <SignupPrompt description="新規の方は" linkLabel="こちら" href="/sign-up" />
+        <SignupPrompt description="登録済の方は" linkLabel="こちら" href="/sign-in" />
       </div>
     </main>
   );

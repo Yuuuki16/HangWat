@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Header } from "@/components/layout/header";
 
-const HEADERLESS_ROUTES = ["/sign-in"];
+const HEADERLESS_ROUTES = ["/sign-in", "/sign-up"];
 
 export function HeaderGate() {
   const pathname = usePathname();

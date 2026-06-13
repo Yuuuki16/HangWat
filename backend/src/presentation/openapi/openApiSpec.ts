@@ -403,71 +403,6 @@ export const openApiSpec = {
         },
       },
     },
-    "/api/events/{eventId}/members": {
-      get: {
-        summary: "List event members",
-        parameters: [
-          { $ref: "#/components/parameters/EventId" },
-          { $ref: "#/components/parameters/EventMemberIdHeader" },
-        ],
-        responses: {
-          "200": {
-            description: "Event members",
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  required: ["members"],
-                  properties: {
-                    members: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/EventMember" },
-                    },
-                  },
-                },
-              },
-            },
-          },
-          "400": { $ref: "#/components/responses/ValidationError" },
-          "401": { $ref: "#/components/responses/Unauthorized" },
-          "403": { $ref: "#/components/responses/Forbidden" },
-          "404": { $ref: "#/components/responses/NotFound" },
-          "500": { $ref: "#/components/responses/InternalServerError" },
-        },
-      },
-    },
-    "/api/events/{eventId}/me/member": {
-      get: {
-        summary: "Get the current event member",
-        parameters: [
-          { $ref: "#/components/parameters/EventId" },
-          { $ref: "#/components/parameters/EventMemberIdHeader" },
-        ],
-        responses: {
-          "200": {
-            description: "Current event member",
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  required: ["eventMember"],
-                  properties: {
-                    eventMember: {
-                      $ref: "#/components/schemas/CurrentEventMember",
-                    },
-                  },
-                },
-              },
-            },
-          },
-          "400": { $ref: "#/components/responses/ValidationError" },
-          "401": { $ref: "#/components/responses/Unauthorized" },
-          "403": { $ref: "#/components/responses/Forbidden" },
-          "404": { $ref: "#/components/responses/NotFound" },
-          "500": { $ref: "#/components/responses/InternalServerError" },
-        },
-      },
-    },
     "/api/events/{eventId}/members/{memberId}": {
       patch: {
         summary: "Update event member display name",
@@ -998,6 +933,37 @@ export const openApiSpec = {
           },
         },
       },
+      LocationInput: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: { type: "string", example: "大阪駅" },
+          address: {
+            type: ["string", "null"],
+            example: "大阪府大阪市北区梅田3丁目1-1",
+          },
+          googlePlaceId: {
+            type: ["string", "null"],
+            example: "ChIJxxxxxxxxxxxx",
+          },
+          latitude: {
+            type: ["number", "null"],
+            minimum: -90,
+            maximum: 90,
+            example: 34.702485,
+          },
+          longitude: {
+            type: ["number", "null"],
+            minimum: -180,
+            maximum: 180,
+            example: 135.495951,
+          },
+          googleMapsUrl: {
+            type: ["string", "null"],
+            example: "https://www.google.com/maps/place/...",
+          },
+        },
+      },
       User: {
         type: ["object", "null"],
         required: ["id", "name", "avatarUrl"],
@@ -1364,7 +1330,7 @@ export const openApiSpec = {
           },
           location: {
             oneOf: [
-              { $ref: "#/components/schemas/Location" },
+              { $ref: "#/components/schemas/LocationInput" },
               { type: "null" },
             ],
           },
