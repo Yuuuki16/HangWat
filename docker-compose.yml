@@ -23,6 +23,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-hangwat_dev}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
       PORT: ${BACKEND_PORT:-4000}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret-change-me}
     ports:
       - "${BACKEND_PORT:-4000}:4000"
     depends_on:
