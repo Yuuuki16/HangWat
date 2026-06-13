@@ -24,7 +24,7 @@ type EventMemberDto = {
   displayName: string;
   role: "owner" | "member";
   memberType: "user" | "guest";
-  user?: {
+  user: {
     id: string;
     name: string;
     avatarUrl: string | null;
