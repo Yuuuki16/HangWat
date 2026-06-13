@@ -23,6 +23,11 @@ describe("docsRoutes", () => {
 
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("content-type")?.includes("text/html"), true);
-    assert.match(await response.text(), /SwaggerUIBundle/);
+
+    const body = await response.text();
+    assert.match(body, /SwaggerUIBundle/);
+    assert.match(body, /swagger-ui-dist@5\.32\.6/);
+    assert.match(body, /integrity="sha384-/);
+    assert.match(body, /crossorigin="anonymous"/);
   });
 });
