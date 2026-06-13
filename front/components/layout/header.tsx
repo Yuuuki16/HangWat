@@ -6,9 +6,10 @@ type HeaderProps = {
     href: string;
     label: string;
   };
+  showProfile?: boolean;
 };
 
-export function Header({ backLink }: HeaderProps) {
+export function Header({ backLink, showProfile = true }: HeaderProps) {
   return (
     <header className="grid h-[60px] w-full shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-primary bg-background px-5 border-b-2">
       {backLink ? (
@@ -30,13 +31,17 @@ export function Header({ backLink }: HeaderProps) {
         HangWat
       </Link>
 
-      <Link
-        href="/login"
-        aria-label="プロフィール"
-        className="justify-self-end rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
-        <span className="block size-7 rounded-full bg-zinc-300" />
-      </Link>
+      {showProfile ? (
+        <Link
+          href="/login"
+          aria-label="プロフィール"
+          className="justify-self-end rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <span className="block size-7 rounded-full bg-zinc-300" />
+        </Link>
+      ) : (
+        <span aria-hidden="true" />
+      )}
     </header>
   );
 }
