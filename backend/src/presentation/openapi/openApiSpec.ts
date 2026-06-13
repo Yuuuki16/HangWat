@@ -169,6 +169,52 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/comments/{commentId}/like": {
+      put: {
+        summary: "Like a comment",
+        parameters: [
+          { $ref: "#/components/parameters/CommentId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Comment liked",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CommentLikeState" },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+      delete: {
+        summary: "Unlike a comment",
+        parameters: [
+          { $ref: "#/components/parameters/CommentId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Comment unliked",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CommentLikeState" },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
   },
   components: {
     parameters: {
@@ -287,6 +333,15 @@ export const openApiSpec = {
             enum: ["user", "guest"],
             example: "guest",
           },
+        },
+      },
+      CommentLikeState: {
+        type: "object",
+        required: ["commentId", "likedByMe", "likeCount"],
+        properties: {
+          commentId: { $ref: "#/components/schemas/BigIntId" },
+          likedByMe: { type: "boolean", example: true },
+          likeCount: { type: "integer", minimum: 0, example: 4 },
         },
       },
       CreateCommentRequest: {

@@ -9,7 +9,11 @@ const maxPostgresBigInt = 9_223_372_036_854_775_807n;
 
 type CommentRouteService = Pick<
   CommentService,
-  "listComments" | "createComment" | "deleteComment"
+  | "listComments"
+  | "createComment"
+  | "deleteComment"
+  | "likeComment"
+  | "unlikeComment"
 >;
 
 type ValidationDetail = {
@@ -109,6 +113,64 @@ export function createCommentRoutes(commentService: CommentRouteService) {
       });
 
       return c.json({ message: "コメントを削除しました" });
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.put("/comments/:commentId/like", async (c) => {
+    const commentId = parseId(
+      c.req.param("commentId"),
+      "commentId",
+      "commentId が不正です",
+    );
+    if (!commentId.ok) {
+      return validationError(c, [commentId.detail]);
+    }
+
+    const currentMemberId = validateCurrentMemberHeader(
+      c.req.header("x-event-member-id"),
+    );
+    if (!currentMemberId.ok) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    try {
+      const likeState = await commentService.likeComment({
+        commentId: commentId.value,
+        currentMemberId: currentMemberId.value,
+      });
+
+      return c.json(likeState);
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.delete("/comments/:commentId/like", async (c) => {
+    const commentId = parseId(
+      c.req.param("commentId"),
+      "commentId",
+      "commentId が不正です",
+    );
+    if (!commentId.ok) {
+      return validationError(c, [commentId.detail]);
+    }
+
+    const currentMemberId = validateCurrentMemberHeader(
+      c.req.header("x-event-member-id"),
+    );
+    if (!currentMemberId.ok) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    try {
+      const likeState = await commentService.unlikeComment({
+        commentId: commentId.value,
+        currentMemberId: currentMemberId.value,
+      });
+
+      return c.json(likeState);
     } catch (error) {
       return handleRouteError(c, error);
     }

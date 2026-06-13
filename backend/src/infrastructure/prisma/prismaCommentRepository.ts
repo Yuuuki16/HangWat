@@ -1,9 +1,10 @@
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 
 import type {
   CommentCandidate,
   CommentEvent,
   CommentEventMember,
+  CommentLikeState,
   CommentRecord,
   CommentRecordWithEvent,
   CommentRepository,
@@ -113,6 +114,40 @@ export class PrismaCommentRepository implements CommentRepository {
     return this.toCommentRecordWithEvent(comment);
   }
 
+  async likeComment(input: { commentId: bigint; eventMemberId: bigint }) {
+    try {
+      await this.prisma.commentLike.upsert({
+        where: {
+          commentId_eventMemberId: {
+            commentId: input.commentId,
+            eventMemberId: input.eventMemberId,
+          },
+        },
+        create: input,
+        update: {},
+      });
+    } catch (error) {
+      if (isMissingCommentLikeTargetError(error)) {
+        return null;
+      }
+
+      throw error;
+    }
+
+    return this.findCommentLikeState(input.commentId, input.eventMemberId);
+  }
+
+  async unlikeComment(input: { commentId: bigint; eventMemberId: bigint }) {
+    await this.prisma.commentLike.deleteMany({
+      where: {
+        commentId: input.commentId,
+        eventMemberId: input.eventMemberId,
+      },
+    });
+
+    return this.findCommentLikeState(input.commentId, input.eventMemberId);
+  }
+
   async deleteCommentById(commentId: bigint) {
     await this.prisma.$transaction([
       this.prisma.commentLike.deleteMany({ where: { commentId } }),
@@ -146,6 +181,35 @@ export class PrismaCommentRepository implements CommentRepository {
     } as const;
   }
 
+  private async findCommentLikeState(
+    commentId: bigint,
+    currentMemberId: bigint,
+  ): Promise<CommentLikeState | null> {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+      select: {
+        id: true,
+        likes: {
+          where: { eventMemberId: currentMemberId },
+          select: { id: true },
+          take: 1,
+        },
+        _count: {
+          select: { likes: true },
+        },
+      },
+    });
+    if (comment === null) {
+      return null;
+    }
+
+    return {
+      commentId: comment.id,
+      likedByCurrentMember: comment.likes.length > 0,
+      likeCount: comment._count.likes,
+    };
+  }
+
   private toCommentRecord(comment: PrismaCommentForResponse): CommentRecord {
     return {
       id: comment.id,
@@ -172,4 +236,11 @@ export class PrismaCommentRepository implements CommentRepository {
       eventId: comment.candidate.eventId,
     };
   }
+}
+
+function isMissingCommentLikeTargetError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2003" || error.code === "P2025")
+  );
 }
