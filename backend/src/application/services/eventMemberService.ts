@@ -4,6 +4,7 @@ import type {
   EventMemberRecord,
   EventMemberRepository,
   EventMemberRole,
+  EventMemberTarget,
 } from "../../domain/repositories/eventMemberRepository.js";
 
 export type EventMemberDto = {
@@ -27,6 +28,16 @@ export type CurrentEventMemberDto = {
   displayName: string;
   role: "owner" | "member";
   memberType: "user" | "guest";
+};
+
+export type UpdatedEventMemberDto = {
+  id: string;
+  eventId: string;
+  userId: string | null;
+  displayName: string;
+  role: "owner" | "member";
+  memberType: "user" | "guest";
+  updatedAt: string;
 };
 
 export class EventMemberService {
@@ -67,6 +78,95 @@ export class EventMemberService {
     this.assertMemberBelongsToEvent(currentMember, event.id);
 
     return this.toCurrentEventMemberDto(currentMember);
+  }
+
+  async updateDisplayName(input: {
+    eventId: bigint;
+    memberId: bigint;
+    currentMemberId: bigint;
+    displayName: string;
+  }): Promise<UpdatedEventMemberDto> {
+    const currentMember = await this.resolveCurrentMember(
+      input.currentMemberId,
+    );
+    const event = await this.eventMemberRepository.findEventById(input.eventId);
+    if (event === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+    this.assertMemberBelongsToEvent(currentMember, event.id);
+
+    const target = await this.eventMemberRepository.findMemberInEvent(
+      event.id,
+      input.memberId,
+    );
+    if (target === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+
+    this.assertCanModifyMember(currentMember, target);
+
+    const isTaken = await this.eventMemberRepository.isDisplayNameTaken(
+      event.id,
+      input.displayName,
+      target.id,
+    );
+    if (isTaken) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "同じイベント内で同じ表示名が既に使われています",
+      );
+    }
+
+    const updated = await this.eventMemberRepository.updateDisplayName(
+      target.id,
+      input.displayName,
+    );
+    return this.toUpdatedEventMemberDto(updated);
+  }
+
+  async deleteMember(input: {
+    eventId: bigint;
+    memberId: bigint;
+    currentMemberId: bigint;
+  }): Promise<void> {
+    const currentMember = await this.resolveCurrentMember(
+      input.currentMemberId,
+    );
+    const event = await this.eventMemberRepository.findEventById(input.eventId);
+    if (event === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+    this.assertMemberBelongsToEvent(currentMember, event.id);
+
+    const target = await this.eventMemberRepository.findMemberInEvent(
+      event.id,
+      input.memberId,
+    );
+    if (target === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+
+    this.assertCanModifyMember(currentMember, target);
+
+    if (target.role === "OWNER") {
+      throw new ApplicationError("CONFLICT", "ownerは退出できません");
+    }
+
+    await this.eventMemberRepository.deleteEventMember(target.id);
+  }
+
+  private assertCanModifyMember(
+    currentMember: CurrentEventMember,
+    target: { id: bigint; eventId: bigint },
+  ) {
+    const isSelf = currentMember.id === target.id;
+    const isOwner = currentMember.role === "OWNER";
+    if (!isSelf && !isOwner) {
+      throw new ApplicationError(
+        "FORBIDDEN",
+        "この操作を行う権限がありません",
+      );
+    }
   }
 
   private async resolveCurrentMember(currentMemberId: bigint) {
@@ -123,6 +223,20 @@ export class EventMemberService {
       displayName: member.displayName,
       role: this.toRoleDto(member.role),
       memberType: member.userId === null ? "guest" : "user",
+    };
+  }
+
+  private toUpdatedEventMemberDto(
+    member: EventMemberTarget,
+  ): UpdatedEventMemberDto {
+    return {
+      id: member.id.toString(),
+      eventId: member.eventId.toString(),
+      userId: member.userId?.toString() ?? null,
+      displayName: member.displayName,
+      role: this.toRoleDto(member.role),
+      memberType: member.userId === null ? "guest" : "user",
+      updatedAt: member.updatedAt.toISOString(),
     };
   }
 }
