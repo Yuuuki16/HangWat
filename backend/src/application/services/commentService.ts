@@ -2,6 +2,7 @@ import { ApplicationError } from "../errors/applicationError.js";
 import type {
   CommentCandidate,
   CommentEventMember,
+  CommentLikeState,
   CommentRecord,
   CommentRecordWithEvent,
   CommentRepository,
@@ -20,6 +21,12 @@ export type CommentDto = {
   likedByMe: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type CommentLikeDto = {
+  commentId: string;
+  likedByMe: boolean;
+  likeCount: number;
 };
 
 export class CommentService {
@@ -87,6 +94,56 @@ export class CommentService {
     this.assertCanDeleteComment(currentMember, comment);
 
     await this.commentRepository.deleteCommentById(comment.id);
+  }
+
+  async likeComment(input: {
+    commentId: bigint;
+    currentMemberId: bigint;
+  }) {
+    const currentMember = await this.resolveCurrentMember(
+      input.currentMemberId,
+    );
+    const comment = await this.resolveComment(
+      input.commentId,
+      currentMember.id,
+    );
+
+    this.assertMemberBelongsToEvent(currentMember, comment.eventId);
+
+    const likeState = await this.commentRepository.likeComment({
+      commentId: comment.id,
+      eventMemberId: currentMember.id,
+    });
+    if (likeState === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+
+    return this.toCommentLikeDto(likeState);
+  }
+
+  async unlikeComment(input: {
+    commentId: bigint;
+    currentMemberId: bigint;
+  }) {
+    const currentMember = await this.resolveCurrentMember(
+      input.currentMemberId,
+    );
+    const comment = await this.resolveComment(
+      input.commentId,
+      currentMember.id,
+    );
+
+    this.assertMemberBelongsToEvent(currentMember, comment.eventId);
+
+    const likeState = await this.commentRepository.unlikeComment({
+      commentId: comment.id,
+      eventMemberId: currentMember.id,
+    });
+    if (likeState === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+
+    return this.toCommentLikeDto(likeState);
   }
 
   private async resolveCurrentMember(currentMemberId: bigint) {
@@ -177,6 +234,14 @@ export class CommentService {
       likedByMe: comment.likedByCurrentMember,
       createdAt: comment.createdAt.toISOString(),
       updatedAt: comment.updatedAt.toISOString(),
+    };
+  }
+
+  private toCommentLikeDto(likeState: CommentLikeState): CommentLikeDto {
+    return {
+      commentId: likeState.commentId.toString(),
+      likedByMe: likeState.likedByCurrentMember,
+      likeCount: likeState.likeCount,
     };
   }
 }

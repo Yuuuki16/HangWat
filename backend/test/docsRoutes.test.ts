@@ -19,6 +19,8 @@ describe("docsRoutes", () => {
       body.paths["/api/events/{eventId}/candidates/{candidateId}/comments"],
     );
     assert.ok(body.paths["/api/comments/{commentId}"]);
+    assert.ok(body.paths["/api/comments/{commentId}/like"]?.put);
+    assert.ok(body.paths["/api/comments/{commentId}/like"]?.delete);
   });
 
   it("returns Swagger UI page", async () => {

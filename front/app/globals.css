@@ -6,6 +6,8 @@
   --primary: #e3bd49;
   --event: #eaffed;
   --danger: #cd2e31;
+  --graph-green: #6bdf4e;
+  --graph-orange: #ffba43;
   --base-radius: 15px;
 }
 
@@ -15,6 +17,8 @@
   --color-primary: var(--primary);
   --color-event: var(--event);
   --color-danger: var(--danger);
+  --color-graph-green: var(--graph-green);
+  --color-graph-orange: var(--graph-orange);
   --font-sans: var(--font-inter);
   --font-title: var(--font-pacifico);
   --radius-base: var(--base-radius);
@@ -24,4 +28,16 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), sans-serif;
+}
+
+.candidate-time-input:invalid {
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
+}
+
+.candidate-time-input:valid {
+  color: var(--foreground);
+}
+
+.candidate-time-input::-webkit-calendar-picker-indicator {
+  opacity: 0;
 }

@@ -1563,7 +1563,7 @@ Response Body
 
 ```json
 {
-  "commentId": "comment_001",
+  "commentId": "1",
   "likedByMe": true,
   "likeCount": 4
 }
@@ -1573,6 +1573,7 @@ Error
 
 | Status | Code | 説明 |
 | --- | --- | --- |
+| 400 | VALIDATION_ERROR | 入力値が不正 |
 | 401 | UNAUTHORIZED | 未ログイン、またはローカルトークンが不正 |
 | 403 | FORBIDDEN | イベント参加者ではない |
 | 404 | NOT_FOUND | コメントが存在しない |
@@ -1602,7 +1603,7 @@ Response Body
 
 ```json
 {
-  "commentId": "comment_001",
+  "commentId": "1",
   "likedByMe": false,
   "likeCount": 3
 }
@@ -1612,6 +1613,7 @@ Error
 
 | Status | Code | 説明 |
 | --- | --- | --- |
+| 400 | VALIDATION_ERROR | 入力値が不正 |
 | 401 | UNAUTHORIZED | 未ログイン、またはローカルトークンが不正 |
 | 403 | FORBIDDEN | イベント参加者ではない |
 | 404 | NOT_FOUND | コメントが存在しない |
