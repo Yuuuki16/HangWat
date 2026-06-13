@@ -125,10 +125,7 @@ function parseId(
 
 function handleRouteError(c: Context, error: unknown) {
   if (error instanceof ApplicationError) {
-    const statusByCode: Record<
-      ApplicationError["code"],
-      401 | 403 | 404 | 409
-    > = {
+    const statusByCode: Record<ApplicationError["code"], 401 | 403 | 404 | 409> = {
       UNAUTHORIZED: 401,
       FORBIDDEN: 403,
       NOT_FOUND: 404,
