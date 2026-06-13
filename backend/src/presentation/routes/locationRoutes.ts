@@ -180,15 +180,15 @@ function isAllowedGoogleMapsUrl(value: string): boolean {
     return false;
   }
 
-  if (url.protocol !== "https:" && url.protocol !== "http:") {
+  if (url.protocol !== "https:") {
     return false;
   }
 
   const hostname = url.hostname.toLowerCase();
   if (hostname === "maps.app.goo.gl") return true;
   if (hostname === "goo.gl" && url.pathname.startsWith("/maps")) return true;
-  if (hostname.startsWith("maps.google.")) return true;
-  if (hostname === "google.com" || hostname.endsWith(".google.com")) {
+  if (/^maps\.google\.(?:[a-z]{2,3}|co\.[a-z]{2})$/.test(hostname)) return true;
+  if (hostname === "google.com" || hostname === "www.google.com") {
     return url.pathname.startsWith("/maps");
   }
 
