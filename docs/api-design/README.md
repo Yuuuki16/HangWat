@@ -14,6 +14,7 @@ HangWat の API 実装と合わせてレビューできるように、`HangWat/d
 | [03-screen-requirements.md](./03-screen-requirements.md) | 画面ごとの表示内容、入力内容、操作、必要 API |
 | [04-data-types.md](./04-data-types.md) | API で扱う主要データ型 |
 | [05-authorization-rules.md](./05-authorization-rules.md) | MVP の認可ルールと MVP 後の検討事項 |
+| [issues/README.md](./issues/README.md) | Usecase 単位の API 実装 Issue 要件 |
 
 ## 注意
 

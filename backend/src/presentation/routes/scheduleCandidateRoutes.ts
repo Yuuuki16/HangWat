@@ -39,6 +39,7 @@ type ErrorCode =
   | "UNAUTHORIZED"
   | "FORBIDDEN"
   | "NOT_FOUND"
+  | "CONFLICT"
   | "INTERNAL_SERVER_ERROR";
 
 export function createScheduleCandidateRoutes(
@@ -420,10 +421,11 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function handleRouteError(c: Context, error: unknown) {
   if (error instanceof ApplicationError) {
-    const statusByCode: Record<ApplicationError["code"], 401 | 403 | 404> = {
+    const statusByCode: Record<ApplicationError["code"], 401 | 403 | 404 | 409> = {
       UNAUTHORIZED: 401,
       FORBIDDEN: 403,
       NOT_FOUND: 404,
+      CONFLICT: 409,
     };
     const status = statusByCode[error.code];
 
@@ -456,7 +458,7 @@ function errorResponse(
   c: Context,
   code: Exclude<ErrorCode, "VALIDATION_ERROR">,
   message: string,
-  status: 401 | 403 | 404 | 500,
+  status: 401 | 403 | 404 | 409 | 500,
 ) {
   return c.json({ error: { code, message } }, status);
 }

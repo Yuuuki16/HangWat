@@ -26,6 +26,7 @@ type ErrorCode =
   | "UNAUTHORIZED"
   | "FORBIDDEN"
   | "NOT_FOUND"
+  | "CONFLICT"
   | "INTERNAL_SERVER_ERROR";
 
 export function createCommentRoutes(commentService: CommentRouteService) {
@@ -312,11 +313,13 @@ function isObject(value: unknown): value is { body?: unknown } {
 
 function handleRouteError(c: Context, error: unknown) {
   if (error instanceof ApplicationError) {
-    const statusByCode: Record<ApplicationError["code"], 401 | 403 | 404> = {
-      UNAUTHORIZED: 401,
-      FORBIDDEN: 403,
-      NOT_FOUND: 404,
-    };
+    const statusByCode: Record<ApplicationError["code"], 401 | 403 | 404 | 409> =
+      {
+        UNAUTHORIZED: 401,
+        FORBIDDEN: 403,
+        NOT_FOUND: 404,
+        CONFLICT: 409,
+      };
     const status = statusByCode[error.code];
 
     return errorResponse(c, error.code, error.message, status);
@@ -351,7 +354,7 @@ function errorResponse(
   c: Context,
   code: Exclude<ErrorCode, "VALIDATION_ERROR">,
   message: string,
-  status: 401 | 403 | 404 | 500,
+  status: 401 | 403 | 404 | 409 | 500,
 ) {
   return c.json({ error: { code, message } }, status);
 }
