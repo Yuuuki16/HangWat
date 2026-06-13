@@ -1,4 +1,8 @@
-export type ApplicationErrorCode = "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND";
+export type ApplicationErrorCode =
+  | "UNAUTHORIZED"
+  | "FORBIDDEN"
+  | "NOT_FOUND"
+  | "CONFLICT";
 
 export class ApplicationError extends Error {
   constructor(

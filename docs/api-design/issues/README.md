@@ -33,4 +33,3 @@ GitHub Issue を進捗管理の正とし、各 Issue の詳細は個別 Markdown
 | [#46](./46-candidate-cancel-confirm-api.md) | 予定取消 API | TBD | TBD |
 | [#47](./47-comments-api.md) | コメント API | `@kosuke` | TBD |
 | [#48](./48-comment-like-api.md) | コメントいいね API | `@kosuke` | TBD |
-
