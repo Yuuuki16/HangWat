@@ -1,0 +1,38 @@
+name: Branch name
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate pull request branch name
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: |
+          if [ "$BRANCH_NAME" = "develop" ] && [ "$BASE_BRANCH" = "main" ]; then
+            exit 0
+          fi
+
+          case "$BRANCH_NAME" in
+            feature/*|bugfix/*|refactor/*|docs/*|chore/*|design/*|test/*|build/*)
+              ;;
+            *)
+              echo "Invalid branch name: $BRANCH_NAME"
+              echo "Use one of: feature/<short-title>, bugfix/<short-title>, refactor/<short-title>, docs/<short-title>, chore/<short-title>, design/<short-title>, test/<short-title>, build/<short-title>."
+              exit 1
+              ;;
+          esac
+
+          short_title="${BRANCH_NAME#*/}"
+          if ! printf '%s' "$short_title" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*$'; then
+            echo "Invalid short title: $short_title"
+            echo "Use lowercase letters, numbers, and single hyphens only."
+            exit 1
+          fi

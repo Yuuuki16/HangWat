@@ -1,26 +1,45 @@
 # Git / ブランチ / コミットルール
 
 Git の履歴は変更理由を追える状態に保ちます。
-ブランチ、コミット、PR は Issue と紐づけて管理します。
+ブランチ、コミット、PR は変更目的が分かる単位で管理します。
 
 ## ブランチ命名
 
 ```txt
-feature/<issue-number>-short-title
-bugfix/<issue-number>-short-title
-refactor/<issue-number>-short-title
-docs/<issue-number>-short-title
-chore/<issue-number>-short-title
-design/<issue-number>-short-title
+feature/<short-title>
+bugfix/<short-title>
+refactor/<short-title>
+docs/<short-title>
+chore/<short-title>
+design/<short-title>
+test/<short-title>
+build/<short-title>
 ```
 
 例:
 
 ```txt
-feature/12-task-create-api
-bugfix/24-health-check-db-error
-docs/31-development-rules
+feature/task-create-api
+bugfix/health-check-db-error
+docs/development-rules
+test/task-service
+build/docker-image
 ```
+
+`short-title` は英小文字、数字、ハイフンで簡潔に書きます。
+作業内容が伝わる名前にし、管理番号や内部識別子を前提にしません。
+
+## 作業ブランチ
+
+- 実装やファイル編集を行う前に、作業内容に対応する作業ブランチにいることを確認する。
+- `main`、`develop`、または目的が異なるブランチにいる場合は、実装やファイル編集の前に新規ブランチを作成する。
+- 既に目的に対応する作業ブランチにいる場合は、現在の差分が同じ目的に沿っていることを確認してから継続してよい。
+- 未コミット差分の由来や目的が不明な場合は、ブランチ作成や実装の前に確認する。
+- 既存ブランチで別目的の実装を続けず、変更目的ごとにブランチを分ける。
+- ドキュメント確認や調査だけでコード変更しない場合は、新規ブランチ作成を必須にしない。
+- ブランチ作成前に現在のブランチと未コミット差分を確認する。
+- Pull Request はブランチ命名規則に合う作業ブランチから作成する。
+- `develop` から `main` への統合 Pull Request だけは例外として許可する。
 
 ## コミットメッセージ
 
