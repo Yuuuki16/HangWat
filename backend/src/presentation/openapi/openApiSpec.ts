@@ -125,6 +125,88 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/invite-tokens/{inviteToken}": {
+      get: {
+        summary: "Get event preview by invite token",
+        tags: ["InviteJoin"],
+        parameters: [{ $ref: "#/components/parameters/InviteToken" }],
+        responses: {
+          "200": {
+            description: "Invite event preview",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/InviteEventPreviewResponse",
+                },
+              },
+            },
+          },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "410": { $ref: "#/components/responses/Gone" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/invite-tokens/{inviteToken}/join": {
+      post: {
+        summary: "Join an event by invite token",
+        tags: ["InviteJoin"],
+        parameters: [{ $ref: "#/components/parameters/InviteToken" }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/InviteJoinRequest" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Joined event",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/InviteJoinResponse" },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "409": { $ref: "#/components/responses/Conflict" },
+          "410": { $ref: "#/components/responses/Gone" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/invite-tokens/{inviteToken}/rejoin": {
+      post: {
+        summary: "Rejoin an event by member session token",
+        tags: ["InviteJoin"],
+        parameters: [{ $ref: "#/components/parameters/InviteToken" }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/InviteRejoinRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Rejoined event",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/InviteRejoinResponse" },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "410": { $ref: "#/components/responses/Gone" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/": {
       get: {
         summary: "API information",
@@ -776,6 +858,12 @@ export const openApiSpec = {
         required: true,
         schema: { $ref: "#/components/schemas/BigIntId" },
       },
+      InviteToken: {
+        name: "inviteToken",
+        in: "path",
+        required: true,
+        schema: { type: "string", example: "abc123" },
+      },
     },
     responses: {
       ValidationError: {
@@ -804,6 +892,14 @@ export const openApiSpec = {
       },
       Conflict: {
         description: "Conflict",
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/ErrorResponse" },
+          },
+        },
+      },
+      Gone: {
+        description: "Gone",
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
@@ -1418,6 +1514,101 @@ export const openApiSpec = {
         required: ["message"],
         properties: {
           message: { type: "string", example: "招待URLを無効化しました" },
+        },
+      },
+      InviteEventPreviewResponse: {
+        type: "object",
+        required: ["event", "requiresDisplayName"],
+        properties: {
+          event: {
+            type: "object",
+            required: ["id", "title", "date", "description", "location"],
+            properties: {
+              id: { $ref: "#/components/schemas/BigIntId" },
+              title: { type: "string", example: "梅田で昼ごはん" },
+              date: {
+                type: ["string", "null"],
+                format: "date",
+                example: "2026-07-31",
+              },
+              description: {
+                type: ["string", "null"],
+                example: "昼ごはん候補を決める",
+              },
+              location: { $ref: "#/components/schemas/Location" },
+            },
+          },
+          requiresDisplayName: { type: "boolean", example: true },
+        },
+      },
+      InviteJoinRequest: {
+        type: "object",
+        required: ["displayName"],
+        properties: {
+          displayName: { type: "string", minLength: 1, maxLength: 50 },
+        },
+      },
+      InviteEventMember: {
+        type: "object",
+        required: [
+          "id",
+          "eventId",
+          "userId",
+          "displayName",
+          "role",
+          "memberType",
+          "createdAt",
+          "updatedAt",
+        ],
+        properties: {
+          id: { $ref: "#/components/schemas/BigIntId" },
+          eventId: { $ref: "#/components/schemas/BigIntId" },
+          userId: {
+            type: ["string", "null"],
+            pattern: "^[1-9][0-9]*$",
+            example: null,
+          },
+          displayName: { type: "string", example: "たくや" },
+          role: { type: "string", enum: ["owner", "member"] },
+          memberType: { type: "string", enum: ["user", "guest"] },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      MemberSession: {
+        type: "object",
+        required: ["token", "expiresAt"],
+        properties: {
+          token: {
+            type: "string",
+            example: "plain_local_token_returned_once",
+          },
+          expiresAt: { type: "string", format: "date-time" },
+        },
+      },
+      InviteJoinResponse: {
+        type: "object",
+        required: ["eventMember", "memberSession"],
+        properties: {
+          eventMember: { $ref: "#/components/schemas/InviteEventMember" },
+          memberSession: { $ref: "#/components/schemas/MemberSession" },
+        },
+      },
+      InviteRejoinRequest: {
+        type: "object",
+        required: ["memberSessionToken"],
+        properties: {
+          memberSessionToken: {
+            type: "string",
+            example: "plain_local_token_returned_once",
+          },
+        },
+      },
+      InviteRejoinResponse: {
+        type: "object",
+        required: ["eventMember"],
+        properties: {
+          eventMember: { $ref: "#/components/schemas/InviteEventMember" },
         },
       },
       ErrorResponse: {
