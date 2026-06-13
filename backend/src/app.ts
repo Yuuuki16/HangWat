@@ -6,8 +6,10 @@ import { CommentService } from "./application/services/commentService.js";
 import { EventMemberService } from "./application/services/eventMemberService.js";
 import { EventService } from "./application/services/eventService.js";
 import { HealthService } from "./application/services/healthService.js";
+import { LocationService } from "./application/services/locationService.js";
 import { ScheduleCandidateService } from "./application/services/scheduleCandidateService.js";
 import { ScryptPasswordHasher } from "./infrastructure/auth/passwordHasher.js";
+import { FetchGoogleMapsUrlResolver } from "./infrastructure/googleMaps/fetchGoogleMapsUrlResolver.js";
 import { PrismaAuthRepository } from "./infrastructure/prisma/prismaAuthRepository.js";
 import { PrismaCommentRepository } from "./infrastructure/prisma/prismaCommentRepository.js";
 import { PrismaEventMemberRepository } from "./infrastructure/prisma/prismaEventMemberRepository.js";
@@ -21,6 +23,7 @@ import { createDocsRoutes } from "./presentation/routes/docsRoutes.js";
 import { createEventMemberRoutes } from "./presentation/routes/eventMemberRoutes.js";
 import { createEventRoutes } from "./presentation/routes/eventRoutes.js";
 import { createHealthRoutes } from "./presentation/routes/healthRoutes.js";
+import { createLocationRoutes } from "./presentation/routes/locationRoutes.js";
 import { createScheduleCandidateRoutes } from "./presentation/routes/scheduleCandidateRoutes.js";
 
 export function createApp() {
@@ -64,6 +67,11 @@ export function createApp() {
   const eventService = new EventService(eventRepository);
   const eventMemberRepository = new PrismaEventMemberRepository(prisma);
   const eventMemberService = new EventMemberService(eventMemberRepository);
+  const googleMapsUrlResolver = new FetchGoogleMapsUrlResolver();
+  const locationService = new LocationService(
+    googleMapsUrlResolver,
+    eventMemberRepository,
+  );
   const scheduleCandidateRepository = new PrismaScheduleCandidateRepository(
     prisma,
   );
@@ -76,6 +84,7 @@ export function createApp() {
   app.route("/api", createAuthRoutes(authService, sessionSecret));
   app.route("/api", createEventRoutes(eventService, sessionSecret));
   app.route("/api", createEventMemberRoutes(eventMemberService));
+  app.route("/api", createLocationRoutes(locationService, sessionSecret));
   app.route("/api", createScheduleCandidateRoutes(scheduleCandidateService));
   app.route("/api", createCommentRoutes(commentService));
   app.route("/", createDocsRoutes());

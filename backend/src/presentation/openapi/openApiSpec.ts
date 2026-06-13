@@ -125,6 +125,39 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/locations/resolve-google-maps-url": {
+      post: {
+        summary: "Resolve Google Maps URL for a logged-in user",
+        tags: ["Location"],
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/ResolveGoogleMapsUrlRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Resolved location",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ResolveGoogleMapsUrlResponse",
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/": {
       get: {
         summary: "API information",
@@ -391,6 +424,43 @@ export const openApiSpec = {
                       $ref: "#/components/schemas/CurrentEventMember",
                     },
                   },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/locations/resolve-google-maps-url": {
+      post: {
+        summary: "Resolve Google Maps URL in an event",
+        tags: ["Location"],
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/ResolveGoogleMapsUrlRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Resolved location",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ResolveGoogleMapsUrlResponse",
                 },
               },
             },
@@ -839,7 +909,7 @@ export const openApiSpec = {
           "googleMapsUrl",
         ],
         properties: {
-          name: { type: "string", example: "大阪駅" },
+          name: { type: ["string", "null"], example: "大阪駅" },
           address: {
             type: ["string", "null"],
             example: "大阪府大阪市北区梅田3丁目1-1",
@@ -854,6 +924,25 @@ export const openApiSpec = {
             type: ["string", "null"],
             example: "https://www.google.com/maps/place/...",
           },
+        },
+      },
+      ResolveGoogleMapsUrlRequest: {
+        type: "object",
+        required: ["url"],
+        properties: {
+          url: {
+            type: "string",
+            format: "uri",
+            maxLength: 2048,
+            example: "https://maps.app.goo.gl/xxxxxx",
+          },
+        },
+      },
+      ResolveGoogleMapsUrlResponse: {
+        type: "object",
+        required: ["location"],
+        properties: {
+          location: { $ref: "#/components/schemas/Location" },
         },
       },
       LocationInput: {
