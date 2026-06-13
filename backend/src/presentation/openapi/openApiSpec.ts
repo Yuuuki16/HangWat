@@ -67,6 +67,48 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/events/{eventId}/candidates": {
+      post: {
+        summary: "Create a schedule candidate",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/CreateScheduleCandidateRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created schedule candidate",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["candidate"],
+                  properties: {
+                    candidate: {
+                      $ref: "#/components/schemas/ScheduleCandidate",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/api/events/{eventId}/candidates/{candidateId}/comments": {
       get: {
         summary: "List comments for a schedule candidate",
@@ -291,6 +333,121 @@ export const openApiSpec = {
         pattern: "^[1-9][0-9]*$",
         example: "1",
       },
+      ScheduleCandidate: {
+        type: "object",
+        required: [
+          "id",
+          "eventId",
+          "title",
+          "startAt",
+          "endAt",
+          "location",
+          "description",
+          "status",
+          "createdByMember",
+          "commentCount",
+          "likeCount",
+          "createdAt",
+          "updatedAt",
+        ],
+        properties: {
+          id: { $ref: "#/components/schemas/BigIntId" },
+          eventId: { $ref: "#/components/schemas/BigIntId" },
+          title: { type: "string", example: "一蘭で昼ごはん" },
+          startAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-07-31T04:00:00.000Z",
+          },
+          endAt: {
+            type: ["string", "null"],
+            format: "date-time",
+            example: "2026-07-31T05:00:00.000Z",
+          },
+          location: {
+            oneOf: [
+              { $ref: "#/components/schemas/Location" },
+              { type: "null" },
+            ],
+          },
+          description: {
+            type: ["string", "null"],
+            example: "梅田の一蘭に行く案",
+          },
+          status: {
+            type: "string",
+            enum: ["pending", "confirmed", "cancelled"],
+            example: "pending",
+          },
+          createdByMember: {
+            $ref: "#/components/schemas/EventMemberSummary",
+          },
+          commentCount: { type: "integer", minimum: 0, example: 0 },
+          likeCount: { type: "integer", minimum: 0, example: 0 },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-07-31T10:00:00.000Z",
+          },
+          updatedAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-07-31T10:00:00.000Z",
+          },
+        },
+      },
+      Location: {
+        type: "object",
+        required: [
+          "name",
+          "address",
+          "googlePlaceId",
+          "latitude",
+          "longitude",
+          "googleMapsUrl",
+        ],
+        properties: {
+          name: { type: "string", example: "一蘭 梅田店" },
+          address: {
+            type: ["string", "null"],
+            example: "大阪府大阪市北区...",
+          },
+          googlePlaceId: {
+            type: ["string", "null"],
+            example: "ChIJyyyyyyyyyyyy",
+          },
+          latitude: {
+            type: ["number", "null"],
+            minimum: -90,
+            maximum: 90,
+            example: 34.701111,
+          },
+          longitude: {
+            type: ["number", "null"],
+            minimum: -180,
+            maximum: 180,
+            example: 135.500111,
+          },
+          googleMapsUrl: {
+            type: ["string", "null"],
+            format: "uri",
+            example: "https://www.google.com/maps/place/...",
+          },
+        },
+      },
+      EventMemberSummary: {
+        type: "object",
+        required: ["id", "displayName", "memberType"],
+        properties: {
+          id: { $ref: "#/components/schemas/BigIntId" },
+          displayName: { type: "string", example: "たくや" },
+          memberType: {
+            type: "string",
+            enum: ["user", "guest"],
+            example: "guest",
+          },
+        },
+      },
       Comment: {
         type: "object",
         required: [
@@ -353,6 +510,39 @@ export const openApiSpec = {
             minLength: 1,
             maxLength: 1000,
             example: "この候補よさそう",
+          },
+        },
+      },
+      CreateScheduleCandidateRequest: {
+        type: "object",
+        required: ["title", "startAt"],
+        properties: {
+          title: {
+            type: "string",
+            minLength: 1,
+            maxLength: 100,
+            example: "一蘭で昼ごはん",
+          },
+          startAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-07-31T13:00:00+09:00",
+          },
+          endAt: {
+            type: ["string", "null"],
+            format: "date-time",
+            example: "2026-07-31T14:00:00+09:00",
+          },
+          location: {
+            oneOf: [
+              { $ref: "#/components/schemas/Location" },
+              { type: "null" },
+            ],
+          },
+          description: {
+            type: ["string", "null"],
+            maxLength: 1000,
+            example: "梅田の一蘭に行く案",
           },
         },
       },
