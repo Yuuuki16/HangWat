@@ -1,5 +1,8 @@
 import type { PrismaClient } from "@prisma/client";
 
+import {
+  EventUserNotFoundError,
+} from "../../domain/repositories/eventRepository.js";
 import type {
   EventCandidateRecord,
   EventCreateInput,
@@ -114,6 +117,7 @@ export class PrismaEventRepository implements EventRepository {
     }));
   }
 
+
   async createEvent(input: EventCreateInput): Promise<EventCreatedRecord> {
     const result = await this.prisma.$transaction(async (tx) => {
       let locationId: bigint | null = null;
@@ -149,10 +153,11 @@ export class PrismaEventRepository implements EventRepository {
         },
       });
 
-      const user = await tx.user.findUniqueOrThrow({
+      const user = await tx.user.findUnique({
         where: { id: input.userId },
         select: { name: true },
       });
+      if (user === null) throw new EventUserNotFoundError();
 
       const member = await tx.eventMember.create({
         data: {

@@ -86,6 +86,8 @@ export type EventCreatedRecord = {
   updatedAt: Date;
 };
 
+export class EventUserNotFoundError extends Error {}
+
 export interface EventRepository {
   findUserById(userId: bigint): Promise<{ id: bigint; name: string } | null>;
   findEventsByUserId(userId: bigint): Promise<EventListRecord[]>;

@@ -8,6 +8,7 @@ import type {
   EventMemberRecord,
   EventRepository,
 } from "../../domain/repositories/eventRepository.js";
+import { EventUserNotFoundError } from "../../domain/repositories/eventRepository.js";
 
 export type EventCreatedDto = {
   event: {
@@ -114,20 +115,23 @@ export class EventService {
     location: EventLocationRecord | null;
     description: string | null;
   }): Promise<EventCreatedDto> {
-    const user = await this.eventRepository.findUserById(input.userId);
-    if (user === null) {
-      throw new ApplicationError("UNAUTHORIZED", "認証が必要です");
-    }
-
     const eventDate = input.date === null ? null : new Date(input.date);
 
-    const event = await this.eventRepository.createEvent({
-      userId: input.userId,
-      title: input.title,
-      eventDate,
-      location: input.location,
-      description: input.description,
-    });
+    let event;
+    try {
+      event = await this.eventRepository.createEvent({
+        userId: input.userId,
+        title: input.title,
+        eventDate,
+        location: input.location,
+        description: input.description,
+      });
+    } catch (error) {
+      if (error instanceof EventUserNotFoundError) {
+        throw new ApplicationError("UNAUTHORIZED", "認証が必要です");
+      }
+      throw error;
+    }
 
     return {
       event: {

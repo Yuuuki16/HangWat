@@ -6,6 +6,9 @@ import {
   type ApplicationErrorCode,
 } from "../src/application/errors/applicationError.js";
 import { EventService } from "../src/application/services/eventService.js";
+import {
+  EventUserNotFoundError,
+} from "../src/domain/repositories/eventRepository.js";
 import type {
   EventCreateInput,
   EventCreatedRecord,
@@ -26,13 +29,10 @@ class FakeEventRepository implements EventRepository {
     return this.users.get(key(userId)) ?? null;
   }
 
-  async findUserById(userId: bigint) {
-    return this.users.get(key(userId)) ?? null;
-  }
-
   async findEventsByUserId(userId: bigint) {
     return this.eventsByUserId.get(key(userId)) ?? [];
   }
+
 
   async findEventMemberById(eventMemberId: bigint) {
     return this.eventMembers.get(key(eventMemberId)) ?? null;
@@ -45,7 +45,7 @@ class FakeEventRepository implements EventRepository {
   async createEvent(input: EventCreateInput): Promise<EventCreatedRecord> {
     const user = this.users.get(key(input.userId));
     if (user === undefined) {
-      throw new Error("user not found");
+      throw new EventUserNotFoundError();
     }
 
     const eventId = BigInt(this.createdEvents.length + 100);
