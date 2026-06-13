@@ -1,20 +1,11 @@
 import { CalendarDays, MapPin, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { Event } from "@/features/events/types/event";
+import { formatEventDate } from "@/features/events/utils/formatEventDate";
 
 type EventCardProps = {
   event: Event;
 };
-
-function formatEventDate(date: string) {
-  const eventDate = new Date(`${date}T00:00:00`);
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  }).format(eventDate);
-}
 
 export function EventCard({ event }: EventCardProps) {
   return (

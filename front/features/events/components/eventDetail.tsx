@@ -8,9 +8,11 @@ import {
   MapPin,
   Pencil,
   Users,
+  X,
 } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import type { Event } from "@/features/events/types/event";
+import { formatEventDate } from "@/features/events/utils/formatEventDate";
 
 type EventDetailProps = {
   initialEvent: Event;
@@ -20,17 +22,36 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
   const [event, setEvent] = useState(initialEvent);
   const [isEditing, setIsEditing] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+  const copyStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [title, setTitle] = useState(event.title);
   const [date, setDate] = useState(event.date);
   const [location, setLocation] = useState(event.location);
   const [details, setDetails] = useState(event.details);
 
-  const formattedDate = new Intl.DateTimeFormat("ja-JP", {
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  }).format(new Date(`${event.date}T00:00:00`));
+  const formattedDate = formatEventDate(event.date);
   const editingDate = date ? date.slice(5).replace("-", "/") : "MM/DD";
+
+  useEffect(() => {
+    return () => {
+      if (copyStatusTimerRef.current) {
+        clearTimeout(copyStatusTimerRef.current);
+      }
+    };
+  }, []);
+
+  const resetCopyStatusLater = () => {
+    if (copyStatusTimerRef.current) {
+      clearTimeout(copyStatusTimerRef.current);
+    }
+
+    copyStatusTimerRef.current = setTimeout(() => {
+      setCopyStatus("idle");
+      copyStatusTimerRef.current = null;
+    }, 1500);
+  };
 
   const openEditor = () => {
     setTitle(event.title);
@@ -53,7 +74,18 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
   };
 
   const copyParticipationUrl = async () => {
-    await navigator.clipboard.writeText(event.participationUrl);
+    try {
+      if (!navigator.clipboard) {
+        throw new Error("Clipboard API is unavailable");
+      }
+
+      await navigator.clipboard.writeText(event.participationUrl);
+      setCopyStatus("success");
+      resetCopyStatusLater();
+    } catch {
+      setCopyStatus("error");
+      resetCopyStatusLater();
+    }
   };
 
   return (
@@ -110,10 +142,21 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
                 className="absolute right-3 flex w-[68px] items-center justify-center gap-1 rounded-full bg-primary py-1 text-xs text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 <Clipboard aria-hidden="true" size={13} />
-                コピー
+                {copyStatus === "success" ? "完了" : "コピー"}
               </button>
             </div>
           </dl>
+
+          <p
+            aria-live="polite"
+            className={`mt-1 min-h-4 text-right text-xs ${
+              copyStatus === "error" ? "text-danger" : "text-foreground/60"
+            }`}
+          >
+            {copyStatus === "success" && "リンクをコピーしました"}
+            {copyStatus === "error" &&
+              "コピーできませんでした。URLを直接コピーしてください"}
+          </p>
 
           <button
             type="button"
@@ -178,6 +221,15 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
             className="relative w-full max-w-sm rounded-[16px] border-2 border-primary bg-background px-9 py-5 shadow-xl"
             onMouseDown={(mouseEvent) => mouseEvent.stopPropagation()}
           >
+            <button
+              type="button"
+              aria-label="編集モーダルを閉じる"
+              onClick={() => setIsEditing(false)}
+              className="absolute right-3 top-3 rounded-full p-1 text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <X aria-hidden="true" size={20} />
+            </button>
+
             <h2 id="event-edit-title" className="sr-only">
               イベントを編集
             </h2>
