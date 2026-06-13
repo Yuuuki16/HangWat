@@ -125,6 +125,39 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/locations/resolve-google-maps-url": {
+      post: {
+        summary: "Resolve Google Maps URL for a logged-in user",
+        tags: ["Location"],
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/ResolveGoogleMapsUrlRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Resolved location",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ResolveGoogleMapsUrlResponse",
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/": {
       get: {
         summary: "API information",
@@ -471,6 +504,122 @@ export const openApiSpec = {
           "403": { $ref: "#/components/responses/Forbidden" },
           "404": { $ref: "#/components/responses/NotFound" },
           "409": { $ref: "#/components/responses/Conflict" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/locations/resolve-google-maps-url": {
+      post: {
+        summary: "Resolve Google Maps URL in an event",
+        tags: ["Location"],
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/ResolveGoogleMapsUrlRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Resolved location",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ResolveGoogleMapsUrlResponse",
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/locations/google-place-autocomplete": {
+      get: {
+        summary: "Get Google Place autocomplete predictions",
+        tags: ["Location"],
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+          {
+            name: "input",
+            in: "query",
+            required: true,
+            schema: { type: "string", minLength: 1, maxLength: 200 },
+            description: "Search string",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Place predictions",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["predictions"],
+                  properties: {
+                    predictions: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/GooglePlacePrediction" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/locations/google-place-details": {
+      get: {
+        summary: "Get Google Place details by Place ID",
+        tags: ["Location"],
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+          {
+            name: "googlePlaceId",
+            in: "query",
+            required: true,
+            schema: { type: "string", minLength: 1, maxLength: 300 },
+            description: "Google Place ID",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Place details",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["location"],
+                  properties: {
+                    location: { $ref: "#/components/schemas/Location" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
           "500": { $ref: "#/components/responses/InternalServerError" },
         },
       },
@@ -824,12 +973,6 @@ export const openApiSpec = {
         required: true,
         schema: { $ref: "#/components/schemas/BigIntId" },
       },
-      MemberId: {
-        name: "memberId",
-        in: "path",
-        required: true,
-        schema: { $ref: "#/components/schemas/BigIntId" },
-      },
       CommentId: {
         name: "commentId",
         in: "path",
@@ -984,7 +1127,7 @@ export const openApiSpec = {
           "googleMapsUrl",
         ],
         properties: {
-          name: { type: "string", example: "大阪駅" },
+          name: { type: ["string", "null"], example: "大阪駅" },
           address: {
             type: ["string", "null"],
             example: "大阪府大阪市北区梅田3丁目1-1",
@@ -999,6 +1142,34 @@ export const openApiSpec = {
             type: ["string", "null"],
             example: "https://www.google.com/maps/place/...",
           },
+        },
+      },
+      GooglePlacePrediction: {
+        type: "object",
+        required: ["googlePlaceId", "name", "address"],
+        properties: {
+          googlePlaceId: { type: "string", example: "ChIJyyyyyyyyyyyy" },
+          name: { type: "string", example: "一蘭 梅田店" },
+          address: { type: "string", example: "大阪府大阪市北区梅田1丁目" },
+        },
+      },
+      ResolveGoogleMapsUrlRequest: {
+        type: "object",
+        required: ["url"],
+        properties: {
+          url: {
+            type: "string",
+            format: "uri",
+            maxLength: 2048,
+            example: "https://maps.app.goo.gl/xxxxxx",
+          },
+        },
+      },
+      ResolveGoogleMapsUrlResponse: {
+        type: "object",
+        required: ["location"],
+        properties: {
+          location: { $ref: "#/components/schemas/Location" },
         },
       },
       LocationInput: {
@@ -1106,46 +1277,6 @@ export const openApiSpec = {
             enum: ["user", "guest"],
             example: "guest",
           },
-        },
-      },
-      UpdatedEventMember: {
-        type: "object",
-        required: [
-          "id",
-          "eventId",
-          "userId",
-          "displayName",
-          "role",
-          "memberType",
-          "updatedAt",
-        ],
-        properties: {
-          id: { $ref: "#/components/schemas/BigIntId" },
-          eventId: { $ref: "#/components/schemas/BigIntId" },
-          userId: {
-            type: ["string", "null"],
-            pattern: "^[1-9][0-9]*$",
-            example: null,
-          },
-          displayName: { type: "string", example: "たくや" },
-          role: {
-            type: "string",
-            enum: ["owner", "member"],
-            example: "member",
-          },
-          memberType: {
-            type: "string",
-            enum: ["user", "guest"],
-            example: "guest",
-          },
-          updatedAt: { type: "string", format: "date-time" },
-        },
-      },
-      PatchEventMemberRequest: {
-        type: "object",
-        required: ["displayName"],
-        properties: {
-          displayName: { type: "string", maxLength: 50, example: "たくや" },
         },
       },
       EventListItem: {
