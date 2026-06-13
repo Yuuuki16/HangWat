@@ -183,7 +183,7 @@ export class PrismaScheduleCandidateRepository
         where: { commentId: { in: commentIds } },
       });
       await tx.comment.deleteMany({ where: { candidateId } });
-      await tx.scheduleCandidate.delete({ where: { id: candidateId } });
+      await tx.scheduleCandidate.deleteMany({ where: { id: candidateId } });
     });
   }
 
