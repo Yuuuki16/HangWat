@@ -7,6 +7,10 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { mockCandidateComments } from "@/features/events/data/mockCandidateComments";
 import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
 import {
+  loadLikedCommentIds,
+  saveLikedCommentIds,
+} from "@/features/events/utils/commentLikeStorage";
+import {
   cancelCandidateConfirmation,
   confirmCandidate,
   loadCandidates,
@@ -32,6 +36,7 @@ export function CandidateThread({
   const [editTime, setEditTime] = useState("");
   const [editLocation, setEditLocation] = useState("");
   const [editTimeError, setEditTimeError] = useState("");
+  const [likedCommentIds, setLikedCommentIds] = useState<string[]>([]);
   const editTimeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -39,6 +44,7 @@ export function CandidateThread({
       setCandidate(
         loadCandidates(eventId).find((item) => item.id === candidateId) ?? null,
       );
+      setLikedCommentIds(loadLikedCommentIds(eventId, candidateId));
       setIsLoaded(true);
     }, 0);
 
@@ -58,6 +64,19 @@ export function CandidateThread({
   const handleCancelConfirmation = () => {
     cancelCandidateConfirmation(eventId, candidateId);
     router.push(`/events/${eventId}`);
+  };
+
+  const toggleCommentLike = (commentId: string) => {
+    if (candidate?.status !== "pending") {
+      return;
+    }
+
+    const nextLikedCommentIds = likedCommentIds.includes(commentId)
+      ? likedCommentIds.filter((id) => id !== commentId)
+      : [...likedCommentIds, commentId];
+
+    setLikedCommentIds(nextLikedCommentIds);
+    saveLikedCommentIds(eventId, candidateId, nextLikedCommentIds);
   };
 
   const openEditor = () => {
@@ -206,10 +225,59 @@ export function CandidateThread({
                 </p>
               </div>
 
-              <div className="flex flex-col items-center pt-1 text-xs">
-                <Heart aria-hidden="true" size={20} strokeWidth={1.8} />
-                <span>{item.likeCount}</span>
-              </div>
+              {candidate.status === "pending" ? (
+                <button
+                  type="button"
+                  aria-label={`${item.displayName}のコメントにいいね`}
+                  aria-pressed={likedCommentIds.includes(item.id)}
+                  onClick={() => toggleCommentLike(item.id)}
+                  className="flex flex-col items-center rounded-md pt-1 text-xs transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+                >
+                  <Heart
+                    aria-hidden="true"
+                    size={20}
+                    strokeWidth={1.8}
+                    className={
+                      likedCommentIds.includes(item.id)
+                        ? "like-pop fill-danger text-danger"
+                        : "text-foreground transition-colors"
+                    }
+                  />
+                  <span
+                    className={
+                      likedCommentIds.includes(item.id)
+                        ? "text-danger"
+                        : "text-foreground"
+                    }
+                  >
+                    {item.likeCount +
+                      (likedCommentIds.includes(item.id) ? 1 : 0)}
+                  </span>
+                </button>
+              ) : (
+                <div className="flex flex-col items-center pt-1 text-xs">
+                  <Heart
+                    aria-hidden="true"
+                    size={20}
+                    strokeWidth={1.8}
+                    className={
+                      likedCommentIds.includes(item.id)
+                        ? "fill-danger text-danger"
+                        : "text-foreground"
+                    }
+                  />
+                  <span
+                    className={
+                      likedCommentIds.includes(item.id)
+                        ? "text-danger"
+                        : "text-foreground"
+                    }
+                  >
+                    {item.likeCount +
+                      (likedCommentIds.includes(item.id) ? 1 : 0)}
+                  </span>
+                </div>
+              )}
             </div>
           </article>
         ))}
