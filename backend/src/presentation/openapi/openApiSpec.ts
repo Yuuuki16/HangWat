@@ -76,6 +76,7 @@ export const openApiSpec = {
       post: {
         summary: "Log out the current user",
         tags: ["Auth"],
+        security: [{ cookieAuth: [] }],
         responses: {
           "200": {
             description: "Logged out",
@@ -109,6 +110,7 @@ export const openApiSpec = {
       get: {
         summary: "Get the current logged-in user",
         tags: ["Auth"],
+        security: [{ cookieAuth: [] }],
         responses: {
           "200": {
             description: "Current user",
@@ -283,6 +285,13 @@ export const openApiSpec = {
     },
   },
   components: {
+    securitySchemes: {
+      cookieAuth: {
+        type: "apiKey",
+        in: "cookie",
+        name: "session_token",
+      },
+    },
     parameters: {
       EventId: {
         name: "eventId",
