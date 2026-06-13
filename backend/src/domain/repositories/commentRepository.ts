@@ -66,5 +66,9 @@ export interface CommentRepository {
     commentId: bigint;
     eventMemberId: bigint;
   }): Promise<CommentLikeState>;
+  unlikeComment(input: {
+    commentId: bigint;
+    eventMemberId: bigint;
+  }): Promise<CommentLikeState>;
   deleteCommentById(commentId: bigint): Promise<void>;
 }

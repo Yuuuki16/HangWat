@@ -11,7 +11,11 @@ import { createCommentRoutes } from "../src/presentation/routes/commentRoutes.js
 
 type CommentRouteService = Pick<
   CommentService,
-  "listComments" | "createComment" | "deleteComment" | "likeComment"
+  | "listComments"
+  | "createComment"
+  | "deleteComment"
+  | "likeComment"
+  | "unlikeComment"
 >;
 
 const sampleComment: CommentDto = {
@@ -35,6 +39,12 @@ const sampleLikeState: CommentLikeDto = {
   likeCount: 4,
 };
 
+const sampleUnlikeState: CommentLikeDto = {
+  commentId: "3",
+  likedByMe: false,
+  likeCount: 3,
+};
+
 function createRouteService(
   overrides: Partial<CommentRouteService> = {},
 ): CommentRouteService {
@@ -50,6 +60,9 @@ function createRouteService(
     },
     async likeComment() {
       return sampleLikeState;
+    },
+    async unlikeComment() {
+      return sampleUnlikeState;
     },
     ...overrides,
   };
@@ -169,6 +182,32 @@ describe("commentRoutes", () => {
     });
   });
 
+  it("unlikes a comment", async () => {
+    let receivedInput:
+      | Parameters<CommentRouteService["unlikeComment"]>[0]
+      | undefined;
+    const app = createCommentRoutes(
+      createRouteService({
+        async unlikeComment(input) {
+          receivedInput = input;
+          return sampleUnlikeState;
+        },
+      }),
+    );
+
+    const response = await app.request("/comments/3/like", {
+      method: "DELETE",
+      headers: { "x-event-member-id": "5" },
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), sampleUnlikeState);
+    assert.deepEqual(receivedInput, {
+      commentId: 3n,
+      currentMemberId: 5n,
+    });
+  });
+
   it("returns 401 without x-event-member-id", async () => {
     const app = createCommentRoutes(createRouteService());
     const response = await app.request("/events/1/candidates/10/comments");
@@ -186,6 +225,21 @@ describe("commentRoutes", () => {
     const app = createCommentRoutes(createRouteService());
     const response = await app.request("/comments/3/like", {
       method: "PUT",
+    });
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "UNAUTHORIZED",
+        message: "認証が必要です",
+      },
+    });
+  });
+
+  it("returns 401 without x-event-member-id when unliking comment", async () => {
+    const app = createCommentRoutes(createRouteService());
+    const response = await app.request("/comments/3/like", {
+      method: "DELETE",
     });
 
     assert.equal(response.status, 401);
@@ -283,6 +337,23 @@ describe("commentRoutes", () => {
     const app = createCommentRoutes(createRouteService());
     const response = await app.request("/comments/abc/like", {
       method: "PUT",
+      headers: { "x-event-member-id": "5" },
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "入力内容が正しくありません",
+        details: [{ field: "commentId", message: "commentId が不正です" }],
+      },
+    });
+  });
+
+  it("returns 400 with invalid comment id when unliking comment", async () => {
+    const app = createCommentRoutes(createRouteService());
+    const response = await app.request("/comments/abc/like", {
+      method: "DELETE",
       headers: { "x-event-member-id": "5" },
     });
 
@@ -405,6 +476,55 @@ describe("commentRoutes", () => {
 
     const response = await app.request("/comments/999/like", {
       method: "PUT",
+      headers: { "x-event-member-id": "5" },
+    });
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "NOT_FOUND",
+        message: "データが存在しません",
+      },
+    });
+  });
+
+  it("maps unlike forbidden error to common error response", async () => {
+    const app = createCommentRoutes(
+      createRouteService({
+        async unlikeComment() {
+          throw new ApplicationError(
+            "FORBIDDEN",
+            "この操作を行う権限がありません",
+          );
+        },
+      }),
+    );
+
+    const response = await app.request("/comments/3/like", {
+      method: "DELETE",
+      headers: { "x-event-member-id": "5" },
+    });
+
+    assert.equal(response.status, 403);
+    assert.deepEqual(await response.json(), {
+      error: {
+        code: "FORBIDDEN",
+        message: "この操作を行う権限がありません",
+      },
+    });
+  });
+
+  it("maps unlike not found error to common error response", async () => {
+    const app = createCommentRoutes(
+      createRouteService({
+        async unlikeComment() {
+          throw new ApplicationError("NOT_FOUND", "データが存在しません");
+        },
+      }),
+    );
+
+    const response = await app.request("/comments/999/like", {
+      method: "DELETE",
       headers: { "x-event-member-id": "5" },
     });
 

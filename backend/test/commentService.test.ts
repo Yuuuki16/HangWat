@@ -104,6 +104,26 @@ class FakeCommentRepository implements CommentRepository {
     };
   }
 
+  async unlikeComment(input: {
+    commentId: bigint;
+    eventMemberId: bigint;
+  }): Promise<CommentLikeState> {
+    const comment = this.comments.get(key(input.commentId));
+    assert.ok(comment);
+
+    const likeKey = commentLikeKey(input.commentId, input.eventMemberId);
+    if (this.commentLikes.delete(likeKey)) {
+      comment.likeCount -= 1;
+    }
+    comment.likedByCurrentMember = false;
+
+    return {
+      commentId: comment.id,
+      likedByCurrentMember: false,
+      likeCount: comment.likeCount,
+    };
+  }
+
   async deleteCommentById(commentId: bigint) {
     this.deletedCommentIds.push(commentId);
     this.comments.delete(key(commentId));
@@ -342,6 +362,70 @@ describe("CommentService", () => {
 
     await assertRejectsWithCode(
       () => service.likeComment({ commentId: 999n, currentMemberId: 5n }),
+      "NOT_FOUND",
+    );
+  });
+
+  it("unlikes a comment by event participant", async () => {
+    const repository = createRepository();
+    const service = new CommentService(repository);
+
+    const likeState = await service.unlikeComment({
+      commentId: 1n,
+      currentMemberId: 5n,
+    });
+
+    assert.equal(repository.commentLikes.has(commentLikeKey(1n, 5n)), false);
+    assert.deepEqual(likeState, {
+      commentId: "1",
+      likedByMe: false,
+      likeCount: 2,
+    });
+  });
+
+  it("keeps duplicated unlike idempotent", async () => {
+    const repository = createRepository();
+    const service = new CommentService(repository);
+
+    const likeState = await service.unlikeComment({
+      commentId: 2n,
+      currentMemberId: 5n,
+    });
+
+    assert.deepEqual(likeState, {
+      commentId: "2",
+      likedByMe: false,
+      likeCount: 0,
+    });
+  });
+
+  it("rejects unknown current event member when unliking as unauthorized", async () => {
+    const repository = createRepository();
+    const service = new CommentService(repository);
+
+    await assertRejectsWithCode(
+      () => service.unlikeComment({ commentId: 1n, currentMemberId: 999n }),
+      "UNAUTHORIZED",
+    );
+  });
+
+  it("rejects non participant unlike as forbidden", async () => {
+    const repository = createRepository();
+    const service = new CommentService(repository);
+
+    await assertRejectsWithCode(
+      () => service.unlikeComment({ commentId: 1n, currentMemberId: 7n }),
+      "FORBIDDEN",
+    );
+    assert.equal(repository.commentLikes.has(commentLikeKey(1n, 7n)), false);
+  });
+
+  it("returns not found when unliking unknown comment", async () => {
+    const repository = createRepository();
+    const service = new CommentService(repository);
+
+    await assertRejectsWithCode(
+      () => service.unlikeComment({ commentId: 999n, currentMemberId: 5n }),
       "NOT_FOUND",
     );
   });

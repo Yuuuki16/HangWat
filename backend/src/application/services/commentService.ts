@@ -118,6 +118,28 @@ export class CommentService {
     return this.toCommentLikeDto(likeState);
   }
 
+  async unlikeComment(input: {
+    commentId: bigint;
+    currentMemberId: bigint;
+  }) {
+    const currentMember = await this.resolveCurrentMember(
+      input.currentMemberId,
+    );
+    const comment = await this.resolveComment(
+      input.commentId,
+      currentMember.id,
+    );
+
+    this.assertMemberBelongsToEvent(currentMember, comment.eventId);
+
+    const likeState = await this.commentRepository.unlikeComment({
+      commentId: comment.id,
+      eventMemberId: currentMember.id,
+    });
+
+    return this.toCommentLikeDto(likeState);
+  }
+
   private async resolveCurrentMember(currentMemberId: bigint) {
     const currentMember =
       await this.commentRepository.findEventMemberById(currentMemberId);

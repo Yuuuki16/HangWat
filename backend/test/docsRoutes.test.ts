@@ -20,6 +20,7 @@ describe("docsRoutes", () => {
     );
     assert.ok(body.paths["/api/comments/{commentId}"]);
     assert.ok(body.paths["/api/comments/{commentId}/like"]?.put);
+    assert.ok(body.paths["/api/comments/{commentId}/like"]?.delete);
   });
 
   it("returns Swagger UI page", async () => {

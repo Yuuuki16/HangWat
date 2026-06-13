@@ -129,6 +129,17 @@ export class PrismaCommentRepository implements CommentRepository {
     return this.findCommentLikeState(input.commentId, input.eventMemberId);
   }
 
+  async unlikeComment(input: { commentId: bigint; eventMemberId: bigint }) {
+    await this.prisma.commentLike.deleteMany({
+      where: {
+        commentId: input.commentId,
+        eventMemberId: input.eventMemberId,
+      },
+    });
+
+    return this.findCommentLikeState(input.commentId, input.eventMemberId);
+  }
+
   async deleteCommentById(commentId: bigint) {
     await this.prisma.$transaction([
       this.prisma.commentLike.deleteMany({ where: { commentId } }),
