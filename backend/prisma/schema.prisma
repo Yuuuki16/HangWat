@@ -7,13 +7,105 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Task {
-  id          Int      @id @default(autoincrement())
-  title       String
-  description String?
-  completed   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model User {
+  id           BigInt   @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  colorUrl     String?
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
 
-  @@index([createdAt(sort: Desc)], map: "Task_createdAt_desc_idx")
+  events             Event[]
+  eventMembers       EventMember[]
+  scheduleCandidates ScheduleCandidate[]
+  comments           Comment[]
+  commentLikes       CommentLike[]
+}
+
+model EventUrl {
+  id                   BigInt   @id @default(autoincrement())
+  inviteToken          String   @unique @db.Uuid
+  inviteTokenCreatedAt DateTime @db.Timestamptz(6)
+  inviteTokenExpiresAt DateTime @db.Timestamptz(6)
+
+  event Event?
+}
+
+model Event {
+  id                   BigInt    @id @default(autoincrement())
+  createdBy            BigInt
+  title                String
+  location             String?
+  description          String?
+  eventDate            DateTime? @db.Date
+  eventUrlId           BigInt    @unique
+  confirmedCandidateId BigInt?   @unique
+  createdAt            DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(6)
+
+  creator            User                @relation(fields: [createdBy], references: [id])
+  eventUrl           EventUrl            @relation(fields: [eventUrlId], references: [id])
+  confirmedCandidate ScheduleCandidate?  @relation("ConfirmedCandidate", fields: [confirmedCandidateId], references: [id])
+  members            EventMember[]
+  scheduleCandidates ScheduleCandidate[] @relation("EventCandidates")
+}
+
+model EventMember {
+  id        BigInt   @id @default(autoincrement())
+  eventId   BigInt
+  userId    BigInt
+  role      String
+  status    String
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  event Event @relation(fields: [eventId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+}
+
+model ScheduleCandidate {
+  id          BigInt   @id @default(autoincrement())
+  eventId     BigInt
+  createdBy   BigInt
+  title       String
+  location    String?
+  description String?
+  startsAt    DateTime @db.Timestamptz(6)
+  endsAt      DateTime @db.Timestamptz(6)
+  status      String
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  event            Event     @relation("EventCandidates", fields: [eventId], references: [id])
+  creator          User      @relation(fields: [createdBy], references: [id])
+  comments         Comment[]
+  confirmedByEvent Event?    @relation("ConfirmedCandidate")
+}
+
+model Comment {
+  id          BigInt   @id @default(autoincrement())
+  candidateId BigInt
+  userId      BigInt
+  body        String
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  candidate ScheduleCandidate @relation(fields: [candidateId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
+  likes     CommentLike[]
+}
+
+model CommentLike {
+  id        BigInt   @id @default(autoincrement())
+  commentId BigInt
+  userId    BigInt
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  comment Comment @relation(fields: [commentId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([commentId, userId])
 }
