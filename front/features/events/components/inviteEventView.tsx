@@ -3,27 +3,87 @@
 import {
   CalendarDays,
   ChevronDown,
-  Link2,
   MapPin,
   UserRound,
-  Users,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import type { Event } from "@/features/events/types/event";
+import {
+  getInviteEvent,
+  joinInviteEvent,
+  rejoinInviteEvent,
+  type InviteEventPreview,
+} from "@/features/events/services/inviteApi";
+import {
+  loadMemberSessionToken,
+  removeMemberSessionToken,
+  saveMemberSessionToken,
+} from "@/features/events/utils/memberSessionStorage";
 import { formatEventDate } from "@/features/events/utils/formatEventDate";
 
 type InviteEventViewProps = {
-  event: Event;
+  inviteToken: string;
 };
 
-export function InviteEventView({ event }: InviteEventViewProps) {
+type ViewStatus = "loading" | "ready" | "redirecting" | "error";
+
+export function InviteEventView({ inviteToken }: InviteEventViewProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState<ViewStatus>("loading");
+  const [preview, setPreview] = useState<InviteEventPreview | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinErrorMessage, setJoinErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function initialize() {
+      const storedToken = loadMemberSessionToken(inviteToken);
+
+      if (storedToken) {
+        const rejoinResult = await rejoinInviteEvent(inviteToken, storedToken);
+
+        if (!isActive) {
+          return;
+        }
+
+        if (rejoinResult.ok) {
+          setStatus("redirecting");
+          router.replace(`/events/${rejoinResult.data.eventMember.eventId}`);
+          return;
+        }
+
+        removeMemberSessionToken(inviteToken);
+      }
+
+      const previewResult = await getInviteEvent(inviteToken);
+
+      if (!isActive) {
+        return;
+      }
+
+      if (previewResult.ok) {
+        setPreview(previewResult.data);
+        setStatus("ready");
+        return;
+      }
+
+      setErrorMessage(previewResult.message);
+      setStatus("error");
+    }
+
+    void initialize();
+
+    return () => {
+      isActive = false;
+    };
+  }, [inviteToken, router]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -32,7 +92,10 @@ export function InviteEventView({ event }: InviteEventViewProps) {
       return;
     }
 
-    const handleClose = () => setDisplayName("");
+    const handleClose = () => {
+      setDisplayName("");
+      setJoinErrorMessage(null);
+    };
     dialog.addEventListener("close", handleClose);
 
     return () => dialog.removeEventListener("close", handleClose);
@@ -47,17 +110,61 @@ export function InviteEventView({ event }: InviteEventViewProps) {
     dialogRef.current?.close();
   };
 
-  const handleJoin = (formEvent: FormEvent<HTMLFormElement>) => {
+  const handleJoin = async (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
 
-    if (!displayName.trim()) {
+    const trimmedName = displayName.trim();
+    if (!trimmedName) {
       nameInputRef.current?.focus();
       return;
     }
 
-    closeJoinDialog();
-    router.push(`/events/${event.id}`);
+    if (isJoining) {
+      return;
+    }
+
+    setJoinErrorMessage(null);
+    setIsJoining(true);
+
+    try {
+      const result = await joinInviteEvent(inviteToken, trimmedName);
+
+      if (!result.ok) {
+        setJoinErrorMessage(result.message);
+        return;
+      }
+
+      saveMemberSessionToken(inviteToken, result.data.memberSession.token);
+      closeJoinDialog();
+      router.push(`/events/${result.data.eventMember.eventId}`);
+    } finally {
+      setIsJoining(false);
+    }
   };
+
+  if (status === "loading" || status === "redirecting") {
+    return (
+      <main className="flex flex-1 items-center justify-center px-5 py-16">
+        <p role="status" aria-live="polite" className="text-foreground">
+          読み込み中...
+        </p>
+      </main>
+    );
+  }
+
+  if (status === "error" || preview === null) {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center gap-4 px-5 py-16">
+        <p role="alert" className="text-center text-foreground">
+          {errorMessage ?? "イベント情報を取得できませんでした"}
+        </p>
+      </main>
+    );
+  }
+
+  const event = preview.event;
+  const formattedDate = event.date ? formatEventDate(event.date) : "日付未定";
+  const locationName = event.location?.name ?? "場所未定";
 
   return (
     <main className="flex flex-1 flex-col items-center px-5 pb-14 pt-10">
@@ -71,63 +178,46 @@ export function InviteEventView({ event }: InviteEventViewProps) {
             <dt className="shrink-0">
               <CalendarDays aria-label="開催日" size={21} strokeWidth={2} />
             </dt>
-            <dd className="truncate whitespace-nowrap">
-              {formatEventDate(event.date)}
-            </dd>
+            <dd className="truncate whitespace-nowrap">{formattedDate}</dd>
           </div>
           <div className="flex min-w-0 items-center gap-2">
             <dt className="shrink-0">
               <MapPin aria-label="開催場所" size={21} strokeWidth={2} />
             </dt>
-            <dd title={event.location} className="truncate whitespace-nowrap">
-              {event.location}
-            </dd>
-          </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <dt className="shrink-0">
-              <Users aria-label="参加者" size={21} strokeWidth={2} />
-            </dt>
-            <dd className="truncate whitespace-nowrap">
-              参加者 {event.participantCount}名
-            </dd>
-          </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <dt className="shrink-0">
-              <Link2 aria-label="参加用URL" size={21} strokeWidth={2} />
-            </dt>
-            <dd
-              title={event.participationUrl}
-              className="min-w-0 flex-1 truncate whitespace-nowrap"
-            >
-              {event.participationUrl}
+            <dd title={locationName} className="truncate whitespace-nowrap">
+              {locationName}
             </dd>
           </div>
         </dl>
 
-        <button
-          type="button"
-          aria-expanded={isDetailsOpen}
-          aria-controls="invite-event-details"
-          onClick={() => setIsDetailsOpen((currentState) => !currentState)}
-          className="mx-auto mt-2 flex items-center gap-1 text-sm text-foreground/55 transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          詳細
-          <ChevronDown
-            aria-hidden="true"
-            size={16}
-            className={`transition-transform ${
-              isDetailsOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
+        {event.description && (
+          <>
+            <button
+              type="button"
+              aria-expanded={isDetailsOpen}
+              aria-controls="invite-event-details"
+              onClick={() => setIsDetailsOpen((currentState) => !currentState)}
+              className="mx-auto mt-2 flex items-center gap-1 text-sm text-foreground/55 transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              詳細
+              <ChevronDown
+                aria-hidden="true"
+                size={16}
+                className={`transition-transform ${
+                  isDetailsOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
 
-        {isDetailsOpen && (
-          <p
-            id="invite-event-details"
-            className="mt-2 border-t border-foreground/20 px-2 pt-3 text-sm leading-6"
-          >
-            {event.details}
-          </p>
+            {isDetailsOpen && (
+              <p
+                id="invite-event-details"
+                className="mt-2 whitespace-pre-line border-t border-foreground/20 px-2 pt-3 text-sm leading-6"
+              >
+                {event.description}
+              </p>
+            )}
+          </>
         )}
       </section>
 
@@ -165,10 +255,7 @@ export function InviteEventView({ event }: InviteEventViewProps) {
             <X aria-hidden="true" size={20} />
           </button>
 
-          <h2
-            id="join-dialog-title"
-            className="text-center text-lg text-primary"
-          >
+          <h2 id="join-dialog-title" className="text-center text-lg text-primary">
             お名前を入力してください
           </h2>
 
@@ -190,11 +277,21 @@ export function InviteEventView({ event }: InviteEventViewProps) {
             />
           </label>
 
+          {joinErrorMessage && (
+            <p
+              role="alert"
+              className="mt-4 whitespace-pre-line rounded-base border-2 border-danger bg-danger/10 px-3 py-2 text-sm text-danger"
+            >
+              {joinErrorMessage}
+            </p>
+          )}
+
           <button
             type="submit"
-            className="mx-auto mt-8 block w-32 rounded-xl bg-primary py-2 text-lg text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            disabled={isJoining}
+            className="mx-auto mt-8 block w-32 rounded-xl bg-primary py-2 text-lg text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60"
           >
-            参加
+            {isJoining ? "参加中..." : "参加"}
           </button>
         </form>
       </dialog>
