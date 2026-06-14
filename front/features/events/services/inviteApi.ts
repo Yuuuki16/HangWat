@@ -44,7 +44,9 @@ type ValidationDetail = {
   message: string;
 };
 
-type ApiResult<T> = { ok: true; data: T } | { ok: false; message: string };
+type ApiResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; message: string; status?: number };
 
 export type InvitePreviewResult = ApiResult<InviteEventPreview>;
 export type InviteJoinResult = ApiResult<{
@@ -126,6 +128,7 @@ async function request<T>(
   return {
     ok: false,
     message: await extractErrorMessage(response, fallbackErrorMessage),
+    status: response.status,
   };
 }
 
