@@ -12,7 +12,9 @@ export function ServiceWorkerRegistration() {
     }
 
     const registerServiceWorker = () => {
-      void navigator.serviceWorker.register("/sw.js");
+      void navigator.serviceWorker.register("/sw.js").catch((error: unknown) => {
+        console.error("Service Workerの登録に失敗しました。", error);
+      });
     };
 
     if (document.readyState === "complete") {
