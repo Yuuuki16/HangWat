@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { ProfileMenu } from "@/components/layout/profileMenu";
 
 type HeaderProps = {
   backLink?: {
@@ -32,13 +33,7 @@ export function Header({ backLink, showProfile = true }: HeaderProps) {
       </Link>
 
       {showProfile ? (
-        <Link
-          href="/login"
-          aria-label="プロフィール"
-          className="justify-self-end rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <span className="block size-7 rounded-full bg-zinc-300" />
-        </Link>
+        <ProfileMenu />
       ) : (
         <span aria-hidden="true" />
       )}
