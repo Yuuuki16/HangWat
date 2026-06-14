@@ -7,7 +7,6 @@
     "build": "pnpm --filter backend build && pnpm --filter front build",
     "lint": "pnpm --filter backend lint && pnpm --filter front lint",
     "test": "pnpm --filter backend test",
-    "test:integration": "pnpm --filter backend test:integration",
     "verify": "pnpm prisma:generate && pnpm build && pnpm lint && pnpm test",
     "prisma:generate": "pnpm --filter backend prisma generate",
     "prisma:migrate": "pnpm --filter backend prisma migrate dev",
