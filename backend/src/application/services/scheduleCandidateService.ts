@@ -1,5 +1,6 @@
 import { ApplicationError } from "../errors/applicationError.js";
 import type {
+  ScheduleCandidateConfirmationRecord,
   ScheduleCandidateEventMember,
   ScheduleCandidateLocation,
   ScheduleCandidateLocationInput,
@@ -33,6 +34,17 @@ export type ScheduleCandidateDto = {
   likeCount: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ScheduleCandidateConfirmationDto = {
+  event: {
+    id: string;
+    confirmedCandidateId: string | null;
+  };
+  candidate: {
+    id: string;
+    status: "pending" | "confirmed" | "cancelled";
+  };
 };
 
 export class ScheduleCandidateService {
@@ -156,6 +168,106 @@ export class ScheduleCandidateService {
     );
   }
 
+  async confirmScheduleCandidate(input: {
+    eventId: bigint;
+    candidateId: bigint;
+    currentMemberId: bigint;
+  }) {
+    const currentMember = await this.resolveCurrentMember(
+      input.currentMemberId,
+    );
+    const event = await this.scheduleCandidateRepository.findEventById(
+      input.eventId,
+    );
+    if (event === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+    this.assertMemberBelongsToEvent(currentMember, event.id);
+    this.assertOwner(currentMember);
+
+    const existingCandidate =
+      await this.scheduleCandidateRepository.findScheduleCandidateById(
+        input.candidateId,
+      );
+    if (
+      existingCandidate === null ||
+      existingCandidate.eventId !== event.id
+    ) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+
+    if (event.confirmedCandidateId !== null) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "すでに別の予定が確定しています",
+      );
+    }
+
+    const confirmation =
+      await this.scheduleCandidateRepository.confirmScheduleCandidate({
+        eventId: event.id,
+        candidateId: existingCandidate.id,
+      });
+    if (confirmation === null) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "すでに別の予定が確定しています",
+      );
+    }
+
+    return this.toScheduleCandidateConfirmationDto(confirmation);
+  }
+
+  async cancelScheduleCandidateConfirmation(input: {
+    eventId: bigint;
+    candidateId: bigint;
+    currentMemberId: bigint;
+  }) {
+    const currentMember = await this.resolveCurrentMember(
+      input.currentMemberId,
+    );
+    const event = await this.scheduleCandidateRepository.findEventById(
+      input.eventId,
+    );
+    if (event === null) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+    this.assertMemberBelongsToEvent(currentMember, event.id);
+    this.assertOwner(currentMember);
+
+    const existingCandidate =
+      await this.scheduleCandidateRepository.findScheduleCandidateById(
+        input.candidateId,
+      );
+    if (
+      existingCandidate === null ||
+      existingCandidate.eventId !== event.id
+    ) {
+      throw new ApplicationError("NOT_FOUND", "データが存在しません");
+    }
+
+    if (event.confirmedCandidateId !== existingCandidate.id) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "指定された予定候補は確定されていません",
+      );
+    }
+
+    const confirmation =
+      await this.scheduleCandidateRepository.cancelScheduleCandidateConfirmation({
+        eventId: event.id,
+        candidateId: existingCandidate.id,
+      });
+    if (confirmation === null) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "指定された予定候補は確定されていません",
+      );
+    }
+
+    return this.toScheduleCandidateConfirmationDto(confirmation);
+  }
+
   private async resolveCurrentMember(currentMemberId: bigint) {
     const currentMember =
       await this.scheduleCandidateRepository.findEventMemberById(
@@ -206,6 +318,15 @@ export class ScheduleCandidateService {
       throw new ApplicationError(
         "CONFLICT",
         "確定済みの予定候補のため削除できません",
+      );
+    }
+  }
+
+  private assertOwner(currentMember: ScheduleCandidateEventMember) {
+    if (currentMember.role !== "OWNER") {
+      throw new ApplicationError(
+        "FORBIDDEN",
+        "この操作を行う権限がありません",
       );
     }
   }
@@ -261,5 +382,23 @@ export class ScheduleCandidateService {
     >;
 
     return statusMap[status];
+  }
+
+  private toScheduleCandidateConfirmationDto(
+    confirmation: ScheduleCandidateConfirmationRecord,
+  ): ScheduleCandidateConfirmationDto {
+    return {
+      event: {
+        id: confirmation.event.id.toString(),
+        confirmedCandidateId:
+          confirmation.event.confirmedCandidateId === null
+            ? null
+            : confirmation.event.confirmedCandidateId.toString(),
+      },
+      candidate: {
+        id: confirmation.candidate.id.toString(),
+        status: this.toStatusDto(confirmation.candidate.status),
+      },
+    };
   }
 }

@@ -16,6 +16,8 @@ type ScheduleCandidateRouteService = Pick<
   | "createScheduleCandidate"
   | "updateScheduleCandidate"
   | "deleteScheduleCandidate"
+  | "confirmScheduleCandidate"
+  | "cancelScheduleCandidateConfirmation"
 >;
 
 type ValidationDetail = {
@@ -180,7 +182,97 @@ export function createScheduleCandidateRoutes(
     }
   });
 
+  app.post("/events/:eventId/candidates/:candidateId/confirm", async (c) => {
+    const request = validateScheduleCandidateActionRequest(c);
+    if (!request.ok) {
+      return request.response;
+    }
+
+    try {
+      const confirmation =
+        await scheduleCandidateService.confirmScheduleCandidate({
+          eventId: request.value.eventId,
+          candidateId: request.value.candidateId,
+          currentMemberId: request.value.currentMemberId,
+        });
+
+      return c.json(confirmation, 200);
+    } catch (error) {
+      return handleRouteError(c, error);
+    }
+  });
+
+  app.post(
+    "/events/:eventId/candidates/:candidateId/cancel-confirm",
+    async (c) => {
+      const request = validateScheduleCandidateActionRequest(c);
+      if (!request.ok) {
+        return request.response;
+      }
+
+      try {
+        const confirmation =
+          await scheduleCandidateService.cancelScheduleCandidateConfirmation({
+            eventId: request.value.eventId,
+            candidateId: request.value.candidateId,
+            currentMemberId: request.value.currentMemberId,
+          });
+
+        return c.json(confirmation, 200);
+      } catch (error) {
+        return handleRouteError(c, error);
+      }
+    },
+  );
+
   return app;
+}
+
+function validateScheduleCandidateActionRequest(c: Context):
+  | {
+      ok: true;
+      value: {
+        eventId: bigint;
+        candidateId: bigint;
+        currentMemberId: bigint;
+      };
+    }
+  | { ok: false; response: Response } {
+  const eventId = parseId(
+    c.req.param("eventId"),
+    "eventId",
+    "eventId が不正です",
+  );
+  const candidateId = parseId(
+    c.req.param("candidateId"),
+    "candidateId",
+    "candidateId が不正です",
+  );
+  if (!eventId.ok) {
+    return { ok: false, response: validationError(c, [eventId.detail]) };
+  }
+  if (!candidateId.ok) {
+    return { ok: false, response: validationError(c, [candidateId.detail]) };
+  }
+
+  const currentMemberId = validateCurrentMemberHeader(
+    c.req.header("x-event-member-id"),
+  );
+  if (!currentMemberId.ok) {
+    return {
+      ok: false,
+      response: errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401),
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      eventId: eventId.value,
+      candidateId: candidateId.value,
+      currentMemberId: currentMemberId.value,
+    },
+  };
 }
 
 function validateCurrentMemberHeader(
