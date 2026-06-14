@@ -5,24 +5,33 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { mockCandidateComments } from "@/features/events/data/mockCandidateComments";
+import { getEventDetail } from "@/features/events/data/eventDetailApi";
+import {
+  cancelScheduleCandidateConfirmation,
+  confirmScheduleCandidate,
+  deleteScheduleCandidate,
+  updateScheduleCandidate,
+} from "@/features/events/data/scheduleCandidateApi";
 import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
 import {
-  deleteCandidateLikes,
   loadLikedCommentIds,
   saveLikedCommentIds,
 } from "@/features/events/utils/commentLikeStorage";
-import {
-  cancelCandidateConfirmation,
-  confirmCandidate,
-  deleteCandidate,
-  loadCandidates,
-  saveCandidates,
-  sortCandidatesByTime,
-} from "@/features/events/utils/candidateStorage";
+import { getStoredEventMemberId } from "@/features/events/utils/eventMemberStorage";
+import { buildCandidateStartAt } from "@/features/events/utils/scheduleCandidateDateTime";
+import { ApiError } from "@/lib/apiClient";
 
 type CandidateThreadProps = {
   eventId: string;
   candidateId: string;
+};
+
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  return fallback;
 };
 
 export function CandidateThread({
@@ -31,7 +40,13 @@ export function CandidateThread({
 }: CandidateThreadProps) {
   const router = useRouter();
   const [candidate, setCandidate] = useState<ScheduleCandidate | null>(null);
+  const [eventCandidates, setEventCandidates] = useState<ScheduleCandidate[]>([]);
+  const [eventDate, setEventDate] = useState("");
+  const [eventMemberId, setEventMemberId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [isActionPending, setIsActionPending] = useState(false);
   const [comment, setComment] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -43,15 +58,55 @@ export function CandidateThread({
   const editTimeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const loadTimer = window.setTimeout(() => {
-      setCandidate(
-        loadCandidates(eventId).find((item) => item.id === candidateId) ?? null,
-      );
-      setLikedCommentIds(loadLikedCommentIds(eventId, candidateId));
-      setIsLoaded(true);
-    }, 0);
+    let isMounted = true;
 
-    return () => window.clearTimeout(loadTimer);
+    const loadCandidate = async () => {
+      setIsLoaded(false);
+      setLoadError("");
+      setActionError("");
+
+      const currentMemberId = getStoredEventMemberId(eventId);
+
+      if (!currentMemberId) {
+        if (isMounted) {
+          setLoadError(
+            "イベント参加情報が見つかりません。参加リンクからもう一度開いてください。",
+          );
+          setIsLoaded(true);
+        }
+        return;
+      }
+
+      try {
+        const detail = await getEventDetail(eventId, currentMemberId);
+        const targetCandidate =
+          detail.candidates.find((item) => item.id === candidateId) ?? null;
+
+        if (!isMounted) {
+          return;
+        }
+
+        setEventMemberId(currentMemberId);
+        setEventDate(detail.event.date);
+        setEventCandidates(detail.candidates);
+        setCandidate(targetCandidate);
+        setLikedCommentIds(loadLikedCommentIds(eventId, candidateId));
+        setIsLoaded(true);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setLoadError(getApiErrorMessage(error, "予定候補を読み込めませんでした。"));
+        setIsLoaded(true);
+      }
+    };
+
+    void loadCandidate();
+
+    return () => {
+      isMounted = false;
+    };
   }, [candidateId, eventId]);
 
   const handleCommentSubmit = (formEvent: FormEvent<HTMLFormElement>) => {
@@ -59,20 +114,71 @@ export function CandidateThread({
     setComment("");
   };
 
-  const handleConfirm = () => {
-    confirmCandidate(eventId, candidateId);
-    router.push(`/events/${eventId}`);
+  const handleConfirm = async () => {
+    if (!eventMemberId) {
+      return;
+    }
+
+    setIsActionPending(true);
+    setActionError("");
+
+    try {
+      await confirmScheduleCandidate({
+        eventId,
+        candidateId,
+        currentMemberId: eventMemberId,
+      });
+      router.push(`/events/${eventId}`);
+    } catch (error) {
+      setActionError(getApiErrorMessage(error, "予定を確定できませんでした。"));
+    } finally {
+      setIsActionPending(false);
+    }
   };
 
-  const handleCancelConfirmation = () => {
-    cancelCandidateConfirmation(eventId, candidateId);
-    router.push(`/events/${eventId}`);
+  const handleCancelConfirmation = async () => {
+    if (!eventMemberId) {
+      return;
+    }
+
+    setIsActionPending(true);
+    setActionError("");
+
+    try {
+      await cancelScheduleCandidateConfirmation({
+        eventId,
+        candidateId,
+        currentMemberId: eventMemberId,
+      });
+      router.push(`/events/${eventId}`);
+    } catch (error) {
+      setActionError(getApiErrorMessage(error, "予定を取り消せませんでした。"));
+    } finally {
+      setIsActionPending(false);
+    }
   };
 
-  const handleDelete = () => {
-    deleteCandidate(eventId, candidateId);
-    deleteCandidateLikes(eventId, candidateId);
-    router.push(`/events/${eventId}`);
+  const handleDelete = async () => {
+    if (!eventMemberId) {
+      return;
+    }
+
+    setIsActionPending(true);
+    setActionError("");
+
+    try {
+      await deleteScheduleCandidate({
+        eventId,
+        candidateId,
+        currentMemberId: eventMemberId,
+      });
+      router.push(`/events/${eventId}`);
+    } catch (error) {
+      setActionError(getApiErrorMessage(error, "予定候補を削除できませんでした。"));
+    } finally {
+      setIsActionPending(false);
+      setIsDeleteConfirmOpen(false);
+    }
   };
 
   const toggleCommentLike = (commentId: string) => {
@@ -100,11 +206,14 @@ export function CandidateThread({
     setIsEditing(true);
   };
 
-  const handleEditSubmit = (formEvent: FormEvent<HTMLFormElement>) => {
+  const handleEditSubmit = async (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
 
-    const candidates = loadCandidates(eventId);
-    const hasSameTime = candidates.some(
+    if (!candidate || !eventMemberId) {
+      return;
+    }
+
+    const hasSameTime = eventCandidates.some(
       (item) => item.id !== candidateId && item.time === editTime,
     );
 
@@ -113,24 +222,52 @@ export function CandidateThread({
       return;
     }
 
-    const updatedCandidates = sortCandidatesByTime(
-      candidates.map((item) =>
-        item.id === candidateId
-          ? {
-              ...item,
-              title: editTitle,
-              time: editTime,
-              location: editLocation,
-            }
-          : item,
-      ),
-    );
-    const updatedCandidate =
-      updatedCandidates.find((item) => item.id === candidateId) ?? null;
+    const startAt = buildCandidateStartAt(eventDate, editTime);
 
-    saveCandidates(eventId, updatedCandidates);
-    setCandidate(updatedCandidate);
-    setIsEditing(false);
+    if (!startAt) {
+      setEditTimeError("イベントの日付または時間が不正です");
+      return;
+    }
+
+    setIsActionPending(true);
+    setActionError("");
+
+    try {
+      const updatedCandidate = await updateScheduleCandidate({
+        eventId,
+        candidateId,
+        currentMemberId: eventMemberId,
+        candidate: {
+          title: editTitle,
+          startAt,
+          endAt: candidate.endAt ?? null,
+          location:
+            candidate.locationDetail?.name === editLocation
+              ? candidate.locationDetail
+              : {
+                  name: editLocation,
+                  address: null,
+                  googlePlaceId: null,
+                  latitude: null,
+                  longitude: null,
+                  googleMapsUrl: null,
+                },
+          description: candidate.description ?? null,
+        },
+      });
+
+      setCandidate(updatedCandidate);
+      setEventCandidates((currentCandidates) =>
+        currentCandidates.map((item) =>
+          item.id === candidateId ? updatedCandidate : item,
+        ),
+      );
+      setIsEditing(false);
+    } catch (error) {
+      setActionError(getApiErrorMessage(error, "予定候補を更新できませんでした。"));
+    } finally {
+      setIsActionPending(false);
+    }
   };
 
   const openEditTimePicker = () => {
@@ -151,6 +288,20 @@ export function CandidateThread({
 
   if (!isLoaded) {
     return <main className="flex-1" />;
+  }
+
+  if (loadError) {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
+        <p>{loadError}</p>
+        <Link
+          href={`/events/${eventId}`}
+          className="text-primary underline underline-offset-4"
+        >
+          イベントへ戻る
+        </Link>
+      </main>
+    );
   }
 
   if (!candidate) {
@@ -189,25 +340,33 @@ export function CandidateThread({
             <button
               type="button"
               onClick={handleConfirm}
-              className="rounded-[10px] bg-primary px-4 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              disabled={isActionPending}
+              className="rounded-[10px] bg-primary px-4 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
               予定確定
             </button>
             <button
               type="button"
               onClick={openEditor}
-              className="rounded-[10px] bg-primary px-5 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              disabled={isActionPending}
+              className="rounded-[10px] bg-primary px-5 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
               編集
             </button>
             <button
               type="button"
               onClick={() => setIsDeleteConfirmOpen(true)}
-              className="rounded-[10px] bg-danger px-5 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+              disabled={isActionPending}
+              className="rounded-[10px] bg-danger px-5 py-2 text-sm text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger disabled:cursor-not-allowed disabled:opacity-60"
             >
               削除
             </button>
           </div>
+        )}
+        {actionError && (
+          <p role="alert" className="mt-4 text-sm text-danger">
+            {actionError}
+          </p>
         )}
       </section>
 
@@ -298,7 +457,8 @@ export function CandidateThread({
           <button
             type="button"
             onClick={handleCancelConfirmation}
-            className="rounded-[10px] bg-danger px-6 py-2.5 text-lg text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+            disabled={isActionPending}
+            className="rounded-[10px] bg-danger px-6 py-2.5 text-lg text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger disabled:cursor-not-allowed disabled:opacity-60"
           >
             予定取消
           </button>
@@ -425,7 +585,8 @@ export function CandidateThread({
               <div className="flex justify-center pt-1">
                 <button
                   type="submit"
-                  className="rounded-[10px] bg-primary px-7 py-2 text-xl text-white shadow-[0_4px_3px_rgb(0_0_0/0.28)] transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+                  disabled={isActionPending}
+                  className="rounded-[10px] bg-primary px-7 py-2 text-xl text-white shadow-[0_4px_3px_rgb(0_0_0/0.28)] transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   変更
                 </button>
@@ -459,7 +620,8 @@ export function CandidateThread({
               <button
                 type="button"
                 onClick={handleDelete}
-                className="min-w-24 rounded-[10px] bg-danger px-5 py-2 text-lg text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+                disabled={isActionPending}
+                className="min-w-24 rounded-[10px] bg-danger px-5 py-2 text-lg text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger disabled:cursor-not-allowed disabled:opacity-60"
               >
                 消す
               </button>

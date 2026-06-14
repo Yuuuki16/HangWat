@@ -15,36 +15,39 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import type { Event } from "@/features/events/types/event";
-import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
 import {
-  loadCandidates,
-  saveCandidates,
-  sortCandidatesByTime,
-} from "@/features/events/utils/candidateStorage";
+  createScheduleCandidate,
+  sortScheduleCandidates,
+} from "@/features/events/data/scheduleCandidateApi";
+import type { Event } from "@/features/events/types/event";
+import type { EventMember } from "@/features/events/types/eventMember";
+import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
 import { formatEventDate } from "@/features/events/utils/formatEventDate";
+import { buildCandidateStartAt } from "@/features/events/utils/scheduleCandidateDateTime";
+import { ApiError } from "@/lib/apiClient";
 
 type EventDetailProps = {
   initialEvent: Event;
   initialCandidates: ScheduleCandidate[];
+  initialMembers: EventMember[];
+  myMember: EventMember;
+  eventMemberId: string;
 };
 
-const mergeCandidates = (
-  apiCandidates: ScheduleCandidate[],
-  storedCandidates: ScheduleCandidate[],
-) =>
-  sortCandidatesByTime([
-    ...new Map(
-      [...storedCandidates, ...apiCandidates].map((candidate) => [
-        candidate.id,
-        candidate,
-      ]),
-    ).values(),
-  ]);
+const getCandidateErrorMessage = (error: unknown) => {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  return "予定候補を保存できませんでした。時間をおいて再度お試しください。";
+};
 
 export function EventDetail({
   initialEvent,
   initialCandidates,
+  initialMembers,
+  myMember,
+  eventMemberId,
 }: EventDetailProps) {
   const [event, setEvent] = useState(initialEvent);
   const [isEditing, setIsEditing] = useState(false);
@@ -52,6 +55,7 @@ export function EventDetail({
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [candidates, setCandidates] =
     useState<ScheduleCandidate[]>(initialCandidates);
+  const [members] = useState(initialMembers);
   const [copyStatus, setCopyStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
@@ -65,30 +69,20 @@ export function EventDetail({
   const [candidateTime, setCandidateTime] = useState("");
   const [candidateLocation, setCandidateLocation] = useState("");
   const [candidateTimeError, setCandidateTimeError] = useState("");
+  const [candidateFormError, setCandidateFormError] = useState("");
+  const [isSubmittingCandidate, setIsSubmittingCandidate] = useState(false);
 
   const formattedDate = formatEventDate(event.date);
   const editingDate = date ? date.slice(5).replace("-", "/") : "MM/DD";
+  const participantCount = members.length || event.participantCount;
 
   useEffect(() => {
-    const loadStoredCandidates = () => {
-      setCandidates(mergeCandidates(initialCandidates, loadCandidates(event.id)));
-    };
-    const loadTimer = window.setTimeout(loadStoredCandidates, 0);
-
-    const handlePageShow = () => {
-      loadStoredCandidates();
-    };
-
-    window.addEventListener("pageshow", handlePageShow);
-
     return () => {
-      window.clearTimeout(loadTimer);
-      window.removeEventListener("pageshow", handlePageShow);
       if (copyStatusTimerRef.current) {
         clearTimeout(copyStatusTimerRef.current);
       }
     };
-  }, [event.id, initialCandidates]);
+  }, []);
 
   const resetCopyStatusLater = () => {
     if (copyStatusTimerRef.current) {
@@ -121,31 +115,59 @@ export function EventDetail({
     setIsEditing(false);
   };
 
-  const handleCandidateSubmit = (formEvent: FormEvent<HTMLFormElement>) => {
+  const handleCandidateSubmit = async (
+    formEvent: FormEvent<HTMLFormElement>,
+  ) => {
     formEvent.preventDefault();
+    setCandidateFormError("");
 
     if (candidates.some((candidate) => candidate.time === candidateTime)) {
       setCandidateTimeError("同じ時間の予定がすでにあります");
       return;
     }
 
-    const newCandidate: ScheduleCandidate = {
-      id: crypto.randomUUID(),
-      title: candidateTitle,
-      time: candidateTime,
-      location: candidateLocation,
-      status: "pending",
-      commentCount: 0,
-    };
-    const nextCandidates = sortCandidatesByTime([...candidates, newCandidate]);
+    const startAt = buildCandidateStartAt(event.date, candidateTime);
 
-    setCandidates(nextCandidates);
-    saveCandidates(event.id, nextCandidates);
-    setCandidateTitle("");
-    setCandidateTime("");
-    setCandidateLocation("");
-    setCandidateTimeError("");
-    setIsAddingCandidate(false);
+    if (!startAt) {
+      setCandidateTimeError("イベントの日付または時間が不正です");
+      return;
+    }
+
+    setIsSubmittingCandidate(true);
+
+    try {
+      const newCandidate = await createScheduleCandidate({
+        eventId: event.id,
+        currentMemberId: eventMemberId,
+        candidate: {
+          title: candidateTitle,
+          startAt,
+          endAt: null,
+          location: {
+            name: candidateLocation,
+            address: null,
+            googlePlaceId: null,
+            latitude: null,
+            longitude: null,
+            googleMapsUrl: null,
+          },
+          description: null,
+        },
+      });
+
+      setCandidates((currentCandidates) =>
+        sortScheduleCandidates([...currentCandidates, newCandidate]),
+      );
+      setCandidateTitle("");
+      setCandidateTime("");
+      setCandidateLocation("");
+      setCandidateTimeError("");
+      setIsAddingCandidate(false);
+    } catch (error) {
+      setCandidateFormError(getCandidateErrorMessage(error));
+    } finally {
+      setIsSubmittingCandidate(false);
+    }
   };
 
   const openTimePicker = () => {
@@ -213,7 +235,7 @@ export function EventDetail({
                 <Users aria-label="参加者" size={21} strokeWidth={2} />
               </dt>
               <dd className="truncate whitespace-nowrap">
-                参加者 {event.participantCount}名
+                参加者 {participantCount}名
               </dd>
             </div>
             <div className="flex min-w-0 items-center gap-2 pr-20">
@@ -265,12 +287,30 @@ export function EventDetail({
           </button>
 
           {isDetailsOpen && (
-            <p
+            <div
               id="event-details"
-              className="mt-2 border-t border-foreground/20 px-2 pt-3 text-sm leading-6"
+              className="mt-2 space-y-3 border-t border-foreground/20 px-2 pt-3 text-sm leading-6"
             >
-              {event.details}
-            </p>
+              {event.details && <p>{event.details}</p>}
+              <section aria-label="参加者一覧">
+                <p className="text-primary">あなた: {myMember.displayName}</p>
+                <ul className="mt-1 flex flex-wrap gap-2">
+                  {members.map((member) => (
+                    <li
+                      key={member.id}
+                      className="max-w-full rounded-full border border-primary/35 px-3 py-0.5 text-xs"
+                    >
+                      <span className="inline-block max-w-32 truncate align-bottom">
+                        {member.displayName}
+                      </span>
+                      {member.role === "owner" && (
+                        <span className="ml-1 text-primary">owner</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
           )}
         </section>
 
@@ -395,6 +435,7 @@ export function EventDetail({
           type="button"
           onClick={() => {
             setCandidateTimeError("");
+            setCandidateFormError("");
             setIsAddingCandidate(true);
           }}
           className="min-w-32 rounded-base bg-primary px-8 py-2 text-2xl font-light text-white shadow-[0_4px_3px_rgb(0_0_0/0.28)] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary active:translate-y-0"
@@ -612,11 +653,17 @@ export function EventDetail({
               <div className="flex justify-center pt-1">
                 <button
                   type="submit"
-                  className="rounded-base bg-primary px-7 py-2 text-xl text-white shadow-[0_4px_3px_rgb(0_0_0/0.28)] transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+                  disabled={isSubmittingCandidate}
+                  className="rounded-base bg-primary px-7 py-2 text-xl text-white shadow-[0_4px_3px_rgb(0_0_0/0.28)] transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  追加
+                  {isSubmittingCandidate ? "追加中" : "追加"}
                 </button>
               </div>
+              {candidateFormError && (
+                <p role="alert" className="text-sm text-danger">
+                  {candidateFormError}
+                </p>
+              )}
             </form>
           </section>
         </div>

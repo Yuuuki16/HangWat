@@ -4,8 +4,17 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { EventDetail } from "@/features/events/components/eventDetail";
 import { getEventDetail } from "@/features/events/data/eventDetailApi";
+import {
+  getEventMembers,
+  getMyEventMember,
+} from "@/features/events/data/eventMemberApi";
 import type { Event } from "@/features/events/types/event";
+import type { EventMember } from "@/features/events/types/eventMember";
 import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
+import {
+  getStoredEventMemberId,
+  saveEventMemberId,
+} from "@/features/events/utils/eventMemberStorage";
 import { ApiError } from "@/lib/apiClient";
 
 type LoadState =
@@ -16,26 +25,10 @@ type LoadState =
       status: "success";
       event: Event;
       candidates: ScheduleCandidate[];
+      eventMemberId: string;
+      members: EventMember[];
+      myMember: EventMember;
     };
-
-const eventMemberStorageKeys = (eventId: string) => [
-  `hangwat:event-member-id:${eventId}`,
-  `hangwat:eventMemberId:${eventId}`,
-  "hangwat:event-member-id",
-  "hangwat:eventMemberId",
-];
-
-const getStoredEventMemberId = (eventId: string) => {
-  for (const key of eventMemberStorageKeys(eventId)) {
-    const value = window.localStorage.getItem(key);
-
-    if (value) {
-      return value;
-    }
-  }
-
-  return null;
-};
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof ApiError) {
@@ -78,13 +71,25 @@ export default function EventTimelinePage() {
       }
 
       try {
-        const { event, candidates } = await getEventDetail(eventId, eventMemberId);
+        const [{ event, candidates }, members, myMember] = await Promise.all([
+          getEventDetail(eventId, eventMemberId),
+          getEventMembers(eventId, eventMemberId),
+          getMyEventMember(eventId, eventMemberId),
+        ]);
 
         if (!isMounted) {
           return;
         }
 
-        setLoadState({ status: "success", event, candidates });
+        saveEventMemberId(eventId, myMember.id);
+        setLoadState({
+          status: "success",
+          event,
+          candidates,
+          eventMemberId: myMember.id,
+          members,
+          myMember,
+        });
       } catch (error) {
         if (!isMounted) {
           return;
@@ -119,6 +124,9 @@ export default function EventTimelinePage() {
     <EventDetail
       initialEvent={loadState.event}
       initialCandidates={loadState.candidates}
+      initialMembers={loadState.members}
+      myMember={loadState.myMember}
+      eventMemberId={loadState.eventMemberId}
     />
   );
 }
