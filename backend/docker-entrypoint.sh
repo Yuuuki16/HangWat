@@ -1,4 +1,6 @@
 #!/bin/sh
 set -e
-node backend/node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma
+
+node backend/node_modules/prisma/build/index.js migrate deploy --schema backend/prisma/schema.prisma
+
 exec "$@"
