@@ -14,6 +14,8 @@ export type AuthResult =
   | { ok: true; user: AuthUser }
   | { ok: false; message: string };
 
+export type LogoutResult = { ok: true } | { ok: false; message: string };
+
 export async function registerUser(
   input: RegisterInput,
 ): Promise<AuthResult> {
@@ -26,6 +28,34 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
     input,
     "メールアドレスまたはパスワードが正しくありません",
   );
+}
+
+export async function logoutUser(): Promise<LogoutResult> {
+  const logoutErrorMessage = "ログアウトに失敗しました";
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+      signal: controller.signal,
+    });
+  } catch {
+    return { ok: false, message: networkErrorMessage };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (response.ok) {
+    return { ok: true };
+  }
+
+  return {
+    ok: false,
+    message: await extractErrorMessage(response, logoutErrorMessage),
+  };
 }
 
 async function postAuth(
