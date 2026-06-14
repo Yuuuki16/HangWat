@@ -7,59 +7,62 @@ import type {
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
 
+const requestTimeoutMs = 10000;
+const networkErrorMessage = "通信に失敗しました。時間をおいて再度お試しください";
+
 export type AuthResult =
   | { ok: true; user: AuthUser }
   | { ok: false; message: string };
 
-const networkErrorMessage = "通信に失敗しました。時間をおいて再度お試しください";
-
 export async function registerUser(
   input: RegisterInput,
 ): Promise<AuthResult> {
-  let response: Response;
-  try {
-    response = await fetch(`${apiBaseUrl}/api/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(input),
-    });
-  } catch {
-    return { ok: false, message: networkErrorMessage };
-  }
-
-  if (response.ok) {
-    const data = (await response.json()) as { user: AuthUser };
-    return { ok: true, user: data.user };
-  }
-
-  return { ok: false, message: await extractErrorMessage(response, "登録に失敗しました") };
+  return postAuth("/api/auth/register", input, "登録に失敗しました");
 }
 
 export async function loginUser(input: LoginInput): Promise<AuthResult> {
+  return postAuth(
+    "/api/auth/login",
+    input,
+    "メールアドレスまたはパスワードが正しくありません",
+  );
+}
+
+async function postAuth(
+  path: string,
+  body: unknown,
+  fallbackErrorMessage: string,
+): Promise<AuthResult> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+
   let response: Response;
   try {
-    response = await fetch(`${apiBaseUrl}/api/auth/login`, {
+    response = await fetch(`${apiBaseUrl}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify(input),
+      body: JSON.stringify(body),
+      signal: controller.signal,
     });
   } catch {
     return { ok: false, message: networkErrorMessage };
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (response.ok) {
-    const data = (await response.json()) as { user: AuthUser };
-    return { ok: true, user: data.user };
+    try {
+      const data = (await response.json()) as { user: AuthUser };
+      return { ok: true, user: data.user };
+    } catch {
+      return { ok: false, message: fallbackErrorMessage };
+    }
   }
 
   return {
     ok: false,
-    message: await extractErrorMessage(
-      response,
-      "メールアドレスまたはパスワードが正しくありません",
-    ),
+    message: await extractErrorMessage(response, fallbackErrorMessage),
   };
 }
 

@@ -21,15 +21,18 @@ export function LoginForm() {
     setErrorMessage(null);
     setIsSubmitting(true);
 
-    const result = await loginUser({ email, password });
+    try {
+      const result = await loginUser({ email, password });
 
-    if (result.ok) {
-      router.push("/home");
-      return;
+      if (result.ok) {
+        router.push("/home");
+        return;
+      }
+
+      setErrorMessage(result.message);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setErrorMessage(result.message);
-    setIsSubmitting(false);
   }
 
   return (

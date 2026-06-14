@@ -22,22 +22,25 @@ export function SignupForm() {
     setErrorMessage(null);
     setIsSubmitting(true);
 
-    const result = await registerUser({ name: username, email, password });
+    try {
+      const result = await registerUser({ name: username, email, password });
 
-    if (!result.ok) {
-      setErrorMessage(result.message);
+      if (!result.ok) {
+        setErrorMessage(result.message);
+        return;
+      }
+
+      const loginResult = await loginUser({ email, password });
+
+      if (loginResult.ok) {
+        router.push("/home");
+        return;
+      }
+
+      router.push("/sign-in");
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    const loginResult = await loginUser({ email, password });
-
-    if (loginResult.ok) {
-      router.push("/home");
-      return;
-    }
-
-    router.push("/sign-in");
   }
 
   return (
