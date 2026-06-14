@@ -161,7 +161,7 @@ describe("主要シナリオ: 登録→ログイン→イベント作成→候�
     assert.equal(joinRes.status, 201);
     const joinBody = await joinRes.json();
     const guestMemberId: string = joinBody.eventMember.id;
-    const guestSessionToken: string = joinBody.memberSession.token;
+    void joinBody.memberSession.token;
     assert.equal(joinBody.eventMember.memberType, "guest");
 
     // 14. 候補確定
