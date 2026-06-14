@@ -28,6 +28,12 @@ type InviteEventViewProps = {
 
 type ViewStatus = "loading" | "ready" | "redirecting" | "error";
 
+const invalidMemberSessionStatuses = new Set([401, 404, 410]);
+
+function isInvalidMemberSessionStatus(status: number | undefined): boolean {
+  return status !== undefined && invalidMemberSessionStatuses.has(status);
+}
+
 export function InviteEventView({ inviteToken }: InviteEventViewProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -59,7 +65,9 @@ export function InviteEventView({ inviteToken }: InviteEventViewProps) {
           return;
         }
 
-        removeMemberSessionToken(inviteToken);
+        if (isInvalidMemberSessionStatus(rejoinResult.status)) {
+          removeMemberSessionToken(inviteToken);
+        }
       }
 
       const previewResult = await getInviteEvent(inviteToken);

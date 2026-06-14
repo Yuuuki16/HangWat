@@ -10,7 +10,7 @@ type ValidationDetail = {
 
 export type ApiResult<T> =
   | { ok: true; data: T }
-  | { ok: false; message: string };
+  | { ok: false; message: string; status?: number };
 
 export async function request<T>(
   path: string,
@@ -45,6 +45,7 @@ export async function request<T>(
   return {
     ok: false,
     message: await extractErrorMessage(response, fallbackErrorMessage),
+    status: response.status,
   };
 }
 

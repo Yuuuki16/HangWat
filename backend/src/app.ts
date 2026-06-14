@@ -1,7 +1,9 @@
+import { createNodeWebSocket } from "@hono/node-ws";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 import { AuthService } from "./application/services/authService.js";
+import { CommentRealtimeService } from "./application/services/commentRealtimeService.js";
 import { CommentService } from "./application/services/commentService.js";
 import { EventMemberService } from "./application/services/eventMemberService.js";
 import { EventService } from "./application/services/eventService.js";
@@ -22,7 +24,9 @@ import { PrismaInviteJoinRepository } from "./infrastructure/prisma/prismaInvite
 import { PrismaInviteTokenRepository } from "./infrastructure/prisma/prismaInviteTokenRepository.js";
 import { prisma } from "./infrastructure/prisma/prismaClient.js";
 import { PrismaScheduleCandidateRepository } from "./infrastructure/prisma/prismaScheduleCandidateRepository.js";
+import { InMemoryCommentRealtimeConnectionRepository } from "./infrastructure/realtime/inMemoryCommentRealtimeConnectionRepository.js";
 import { createAuthRoutes } from "./presentation/routes/authRoutes.js";
+import { createCommentRealtimeRoutes } from "./presentation/routes/commentRealtimeRoutes.js";
 import { createCommentRoutes } from "./presentation/routes/commentRoutes.js";
 import { createDocsRoutes } from "./presentation/routes/docsRoutes.js";
 import { createEventMemberRoutes } from "./presentation/routes/eventMemberRoutes.js";
@@ -40,6 +44,8 @@ export function createApp() {
   }
 
   const app = new Hono();
+
+  const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
   app.use(
     "*",
@@ -66,7 +72,16 @@ export function createApp() {
   const passwordHasher = new ScryptPasswordHasher();
   const authService = new AuthService(authRepository, passwordHasher);
   const commentRepository = new PrismaCommentRepository(prisma);
-  const commentService = new CommentService(commentRepository);
+  const commentRealtimeConnectionRepository =
+    new InMemoryCommentRealtimeConnectionRepository();
+  const commentRealtimeService = new CommentRealtimeService(
+    commentRealtimeConnectionRepository,
+    commentRepository,
+  );
+  const commentService = new CommentService(
+    commentRepository,
+    commentRealtimeService,
+  );
   const eventRepository = new PrismaEventRepository(
     prisma,
     process.env.FRONTEND_ORIGIN ?? "http://localhost:3000",
@@ -109,8 +124,15 @@ export function createApp() {
   app.route("/api", createLocationRoutes(locationService, sessionSecret));
   app.route("/api", createScheduleCandidateRoutes(scheduleCandidateService));
   app.route("/api", createCommentRoutes(commentService));
+  app.route(
+    "/",
+    createCommentRealtimeRoutes({
+      commentRealtimeService,
+      upgradeWebSocket,
+    }),
+  );
   app.route("/", createDocsRoutes());
   app.route("/", createHealthRoutes(healthService));
 
-  return app;
+  return { app, injectWebSocket };
 }

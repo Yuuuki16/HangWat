@@ -10,6 +10,7 @@
     "verify": "pnpm prisma:generate && pnpm build && pnpm lint && pnpm test",
     "prisma:generate": "pnpm --filter backend prisma generate",
     "prisma:migrate": "pnpm --filter backend prisma migrate dev",
+    "prisma:migrate:deploy": "pnpm --filter backend prisma migrate deploy",
     "prisma:studio": "pnpm --filter backend prisma studio"
   },
   "packageManager": "pnpm@10.0.0",
