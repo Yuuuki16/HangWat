@@ -33,6 +33,7 @@
 | `BACKEND_PORT` | Backend port exposed by Docker Compose | `4000` |
 | `FRONTEND_ORIGIN` | Origin allowed by backend CORS | `http://localhost:3000` |
 | `NEXT_PUBLIC_API_URL` | Frontend API base URL | `http://localhost:4000` |
+| `NEXT_PUBLIC_WS_BASE_URL` | Frontend WebSocket base URL | `ws://localhost:4000` |
 
 - `.env.example`: Docker Compose 用
 - `backend/.env.example`: backend 単体起動 / backend デプロイ用
@@ -160,8 +161,28 @@ pnpm dev:front
 - `GET /docs`: Swagger UI
 - `GET /openapi.json`: OpenAPI specification
 - `GET /health`: backend と DB 接続の health check
-- `GET /tasks`: task 一覧を取得
-- `POST /tasks`: task を作成
+
+### REST API（主要なもの）
+
+- `GET /api/events/:eventId/candidates/:candidateId/comments`: コメント一覧を取得
+- `POST /api/events/:eventId/candidates/:candidateId/comments`: コメントを投稿
+- `DELETE /api/comments/:commentId`: コメントを削除
+- `PUT /api/comments/:commentId/like`: コメントにいいねする
+- `DELETE /api/comments/:commentId/like`: コメントのいいねを解除
+
+### WebSocket
+
+- `WS /ws/events/:eventId/candidates/:candidateId?memberId=<eventMemberId>`: コメントのリアルタイム更新を購読する
+
+接続後、以下のイベントを受信する。
+
+| type | 説明 |
+| --- | --- |
+| `comment.created` | 新しいコメントが投稿された |
+| `comment.deleted` | コメントが削除された |
+| `comment.like.updated` | コメントのいいね数が更新された |
+
+フロントエンド実装の詳細は [docs/api-design/49-websocket-frontend.md](./docs/api-design/49-websocket-frontend.md) を参照。
 
 ## Verification
 
