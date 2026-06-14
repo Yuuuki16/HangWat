@@ -20,6 +20,7 @@ import {
   removeMemberSessionToken,
   saveMemberSessionToken,
 } from "@/features/events/utils/memberSessionStorage";
+import { saveEventMemberId } from "@/features/events/utils/eventMemberStorage";
 import { formatEventDate } from "@/features/events/utils/formatEventDate";
 
 type InviteEventViewProps = {
@@ -60,8 +61,10 @@ export function InviteEventView({ inviteToken }: InviteEventViewProps) {
         }
 
         if (rejoinResult.ok) {
+          const { eventMember } = rejoinResult.data;
+          saveEventMemberId(eventMember.eventId, eventMember.id);
           setStatus("redirecting");
-          router.replace(`/events/${rejoinResult.data.eventMember.eventId}`);
+          router.replace(`/events/${eventMember.eventId}`);
           return;
         }
 
@@ -142,9 +145,11 @@ export function InviteEventView({ inviteToken }: InviteEventViewProps) {
         return;
       }
 
-      saveMemberSessionToken(inviteToken, result.data.memberSession.token);
+      const { eventMember, memberSession } = result.data;
+      saveMemberSessionToken(inviteToken, memberSession.token);
+      saveEventMemberId(eventMember.eventId, eventMember.id);
       closeJoinDialog();
-      router.push(`/events/${result.data.eventMember.eventId}`);
+      router.push(`/events/${eventMember.eventId}`);
     } finally {
       setIsJoining(false);
     }

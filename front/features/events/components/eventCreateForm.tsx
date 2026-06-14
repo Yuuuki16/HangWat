@@ -9,6 +9,7 @@ import {
   resolveGoogleMapsUrl,
   type ResolvedLocation,
 } from "@/features/events/services/locationApi";
+import { saveEventMemberId } from "@/features/events/utils/eventMemberStorage";
 
 export function EventCreateForm() {
   const router = useRouter();
@@ -71,6 +72,8 @@ export function EventCreateForm() {
       });
 
       if (result.ok) {
+        const { event: createdEvent } = result.data;
+        saveEventMemberId(createdEvent.id, createdEvent.myMember.id);
         router.push("/home");
         return;
       }
