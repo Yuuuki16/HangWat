@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { Event } from "@/features/events/types/event";
+import type { EventMember } from "@/features/events/types/eventMember";
 import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
 import {
   loadCandidates,
@@ -27,6 +28,9 @@ import { formatEventDate } from "@/features/events/utils/formatEventDate";
 type EventDetailProps = {
   initialEvent: Event;
   initialCandidates: ScheduleCandidate[];
+  initialMembers: EventMember[];
+  myMember: EventMember;
+  eventMemberId: string;
 };
 
 const mergeCandidates = (
@@ -45,6 +49,8 @@ const mergeCandidates = (
 export function EventDetail({
   initialEvent,
   initialCandidates,
+  initialMembers,
+  myMember,
 }: EventDetailProps) {
   const [event, setEvent] = useState(initialEvent);
   const [isEditing, setIsEditing] = useState(false);
@@ -52,6 +58,7 @@ export function EventDetail({
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [candidates, setCandidates] =
     useState<ScheduleCandidate[]>(initialCandidates);
+  const [members] = useState(initialMembers);
   const [copyStatus, setCopyStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
@@ -68,6 +75,7 @@ export function EventDetail({
 
   const formattedDate = formatEventDate(event.date);
   const editingDate = date ? date.slice(5).replace("-", "/") : "MM/DD";
+  const participantCount = members.length || event.participantCount;
 
   useEffect(() => {
     const loadStoredCandidates = () => {
@@ -213,7 +221,7 @@ export function EventDetail({
                 <Users aria-label="参加者" size={21} strokeWidth={2} />
               </dt>
               <dd className="truncate whitespace-nowrap">
-                参加者 {event.participantCount}名
+                参加者 {participantCount}名
               </dd>
             </div>
             <div className="flex min-w-0 items-center gap-2 pr-20">
@@ -265,12 +273,30 @@ export function EventDetail({
           </button>
 
           {isDetailsOpen && (
-            <p
+            <div
               id="event-details"
-              className="mt-2 border-t border-foreground/20 px-2 pt-3 text-sm leading-6"
+              className="mt-2 space-y-3 border-t border-foreground/20 px-2 pt-3 text-sm leading-6"
             >
-              {event.details}
-            </p>
+              {event.details && <p>{event.details}</p>}
+              <section aria-label="参加者一覧">
+                <p className="text-primary">あなた: {myMember.displayName}</p>
+                <ul className="mt-1 flex flex-wrap gap-2">
+                  {members.map((member) => (
+                    <li
+                      key={member.id}
+                      className="max-w-full rounded-full border border-primary/35 px-3 py-0.5 text-xs"
+                    >
+                      <span className="inline-block max-w-32 truncate align-bottom">
+                        {member.displayName}
+                      </span>
+                      {member.role === "owner" && (
+                        <span className="ml-1 text-primary">owner</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
           )}
         </section>
 
