@@ -8,8 +8,11 @@ import { EventService } from "./application/services/eventService.js";
 import { HealthService } from "./application/services/healthService.js";
 import { InviteJoinService } from "./application/services/inviteJoinService.js";
 import { InviteTokenService } from "./application/services/inviteTokenService.js";
+import { LocationService } from "./application/services/locationService.js";
 import { ScheduleCandidateService } from "./application/services/scheduleCandidateService.js";
 import { ScryptPasswordHasher } from "./infrastructure/auth/passwordHasher.js";
+import { FetchGoogleMapsUrlResolver } from "./infrastructure/googleMaps/fetchGoogleMapsUrlResolver.js";
+import { GooglePlacesApiClient } from "./infrastructure/googleMaps/googlePlacesApiClient.js";
 import { PrismaAuthRepository } from "./infrastructure/prisma/prismaAuthRepository.js";
 import { PrismaCommentRepository } from "./infrastructure/prisma/prismaCommentRepository.js";
 import { PrismaEventMemberRepository } from "./infrastructure/prisma/prismaEventMemberRepository.js";
@@ -27,6 +30,7 @@ import { createEventRoutes } from "./presentation/routes/eventRoutes.js";
 import { createHealthRoutes } from "./presentation/routes/healthRoutes.js";
 import { createInviteJoinRoutes } from "./presentation/routes/inviteJoinRoutes.js";
 import { createInviteTokenRoutes } from "./presentation/routes/inviteTokenRoutes.js";
+import { createLocationRoutes } from "./presentation/routes/locationRoutes.js";
 import { createScheduleCandidateRoutes } from "./presentation/routes/scheduleCandidateRoutes.js";
 
 export function createApp() {
@@ -70,6 +74,17 @@ export function createApp() {
   const eventService = new EventService(eventRepository);
   const eventMemberRepository = new PrismaEventMemberRepository(prisma);
   const eventMemberService = new EventMemberService(eventMemberRepository);
+  const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (googleMapsApiKey === undefined || googleMapsApiKey.length === 0) {
+    throw new Error("GOOGLE_MAPS_API_KEY is not set");
+  }
+  const googleMapsUrlResolver = new FetchGoogleMapsUrlResolver();
+  const googlePlacesClient = new GooglePlacesApiClient(googleMapsApiKey);
+  const locationService = new LocationService(
+    googleMapsUrlResolver,
+    eventMemberRepository,
+    googlePlacesClient,
+  );
   const scheduleCandidateRepository = new PrismaScheduleCandidateRepository(
     prisma,
   );
@@ -91,6 +106,7 @@ export function createApp() {
   app.route("/api", createEventMemberRoutes(eventMemberService));
   app.route("/api", createInviteJoinRoutes(inviteJoinService));
   app.route("/api", createInviteTokenRoutes(inviteTokenService));
+  app.route("/api", createLocationRoutes(locationService, sessionSecret));
   app.route("/api", createScheduleCandidateRoutes(scheduleCandidateService));
   app.route("/api", createCommentRoutes(commentService));
   app.route("/", createDocsRoutes());

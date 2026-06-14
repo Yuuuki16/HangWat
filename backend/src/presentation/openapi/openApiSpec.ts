@@ -152,6 +152,11 @@ export const openApiSpec = {
         summary: "Join an event by invite token",
         tags: ["InviteJoin"],
         parameters: [{ $ref: "#/components/parameters/InviteToken" }],
+    "/api/locations/resolve-google-maps-url": {
+      post: {
+        summary: "Resolve Google Maps URL for a logged-in user",
+        tags: ["Location"],
+        security: [{ cookieAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -196,6 +201,20 @@ export const openApiSpec = {
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/InviteRejoinResponse" },
+              schema: {
+                $ref: "#/components/schemas/ResolveGoogleMapsUrlRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Resolved location",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ResolveGoogleMapsUrlResponse",
+                },
               },
             },
           },
@@ -485,6 +504,194 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/events/{eventId}/members/{memberId}": {
+      patch: {
+        summary: "Update event member display name",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/MemberId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/PatchEventMemberRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated event member",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["eventMember"],
+                  properties: {
+                    eventMember: {
+                      $ref: "#/components/schemas/UpdatedEventMember",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "409": { $ref: "#/components/responses/Conflict" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+      delete: {
+        summary: "Delete or leave event member",
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/MemberId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        responses: {
+          "200": {
+            description: "Event member deleted",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["message"],
+                  properties: {
+                    message: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "409": { $ref: "#/components/responses/Conflict" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/locations/resolve-google-maps-url": {
+      post: {
+        summary: "Resolve Google Maps URL in an event",
+        tags: ["Location"],
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/ResolveGoogleMapsUrlRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Resolved location",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ResolveGoogleMapsUrlResponse",
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/locations/google-place-autocomplete": {
+      get: {
+        summary: "Get Google Place autocomplete predictions",
+        tags: ["Location"],
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+          {
+            name: "input",
+            in: "query",
+            required: true,
+            schema: { type: "string", minLength: 1, maxLength: 200 },
+            description: "Search string",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Place predictions",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["predictions"],
+                  properties: {
+                    predictions: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/GooglePlacePrediction" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
+    "/api/events/{eventId}/locations/google-place-details": {
+      get: {
+        summary: "Get Google Place details by Place ID",
+        tags: ["Location"],
+        parameters: [
+          { $ref: "#/components/parameters/EventId" },
+          { $ref: "#/components/parameters/EventMemberIdHeader" },
+          {
+            name: "googlePlaceId",
+            in: "query",
+            required: true,
+            schema: { type: "string", minLength: 1, maxLength: 300 },
+            description: "Google Place ID",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Place details",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["location"],
+                  properties: {
+                    location: { $ref: "#/components/schemas/Location" },
+                  },
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/api/events/{eventId}/candidates": {
       post: {
         summary: "Create a schedule candidate",
@@ -598,6 +805,7 @@ export const openApiSpec = {
           "401": { $ref: "#/components/responses/Unauthorized" },
           "403": { $ref: "#/components/responses/Forbidden" },
           "404": { $ref: "#/components/responses/NotFound" },
+          "409": { $ref: "#/components/responses/Conflict" },
           "500": { $ref: "#/components/responses/InternalServerError" },
         },
       },
@@ -628,7 +836,6 @@ export const openApiSpec = {
               },
             },
           },
-          "400": { $ref: "#/components/responses/ValidationError" },
           "401": { $ref: "#/components/responses/Unauthorized" },
           "403": { $ref: "#/components/responses/Forbidden" },
           "404": { $ref: "#/components/responses/NotFound" },
@@ -701,67 +908,6 @@ export const openApiSpec = {
           "401": { $ref: "#/components/responses/Unauthorized" },
           "403": { $ref: "#/components/responses/Forbidden" },
           "404": { $ref: "#/components/responses/NotFound" },
-          "500": { $ref: "#/components/responses/InternalServerError" },
-        },
-      },
-    },
-    "/api/events/{eventId}/invite-tokens": {
-      post: {
-        summary: "Issue an invite token for an event",
-        tags: ["InviteToken"],
-        parameters: [
-          { $ref: "#/components/parameters/EventId" },
-          { $ref: "#/components/parameters/EventMemberIdHeader" },
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/CreateInviteTokenRequest" },
-            },
-          },
-        },
-        responses: {
-          "201": {
-            description: "Invite token issued",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/InviteTokenResponse" },
-              },
-            },
-          },
-          "400": { $ref: "#/components/responses/ValidationError" },
-          "401": { $ref: "#/components/responses/Unauthorized" },
-          "403": { $ref: "#/components/responses/Forbidden" },
-          "404": { $ref: "#/components/responses/NotFound" },
-          "409": { $ref: "#/components/responses/Conflict" },
-          "500": { $ref: "#/components/responses/InternalServerError" },
-        },
-      },
-    },
-    "/api/events/{eventId}/invite-tokens/{tokenId}": {
-      delete: {
-        summary: "Revoke an invite token",
-        tags: ["InviteToken"],
-        parameters: [
-          { $ref: "#/components/parameters/EventId" },
-          { $ref: "#/components/parameters/TokenId" },
-          { $ref: "#/components/parameters/EventMemberIdHeader" },
-        ],
-        responses: {
-          "200": {
-            description: "Invite token revoked",
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/MessageResponse" },
-              },
-            },
-          },
-          "400": { $ref: "#/components/responses/ValidationError" },
-          "401": { $ref: "#/components/responses/Unauthorized" },
-          "403": { $ref: "#/components/responses/Forbidden" },
-          "404": { $ref: "#/components/responses/NotFound" },
-          "409": { $ref: "#/components/responses/Conflict" },
           "500": { $ref: "#/components/responses/InternalServerError" },
         },
       },
@@ -1002,7 +1148,7 @@ export const openApiSpec = {
           "googleMapsUrl",
         ],
         properties: {
-          name: { type: "string", example: "大阪駅" },
+          name: { type: ["string", "null"], example: "大阪駅" },
           address: {
             type: ["string", "null"],
             example: "大阪府大阪市北区梅田3丁目1-1",
@@ -1017,6 +1163,34 @@ export const openApiSpec = {
             type: ["string", "null"],
             example: "https://www.google.com/maps/place/...",
           },
+        },
+      },
+      GooglePlacePrediction: {
+        type: "object",
+        required: ["googlePlaceId", "name", "address"],
+        properties: {
+          googlePlaceId: { type: "string", example: "ChIJyyyyyyyyyyyy" },
+          name: { type: "string", example: "一蘭 梅田店" },
+          address: { type: "string", example: "大阪府大阪市北区梅田1丁目" },
+        },
+      },
+      ResolveGoogleMapsUrlRequest: {
+        type: "object",
+        required: ["url"],
+        properties: {
+          url: {
+            type: "string",
+            format: "uri",
+            maxLength: 2048,
+            example: "https://maps.app.goo.gl/xxxxxx",
+          },
+        },
+      },
+      ResolveGoogleMapsUrlResponse: {
+        type: "object",
+        required: ["location"],
+        properties: {
+          location: { $ref: "#/components/schemas/Location" },
         },
       },
       LocationInput: {
