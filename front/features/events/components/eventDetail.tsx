@@ -17,6 +17,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { Event } from "@/features/events/types/event";
 import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
+import { createInviteToken } from "@/features/events/data/inviteTokenApi";
 import {
   loadCandidates,
   saveCandidates,
@@ -27,6 +28,7 @@ import { formatEventDate } from "@/features/events/utils/formatEventDate";
 type EventDetailProps = {
   initialEvent: Event;
   initialCandidates: ScheduleCandidate[];
+  memberId: string;
 };
 
 const mergeCandidates = (
@@ -45,9 +47,11 @@ const mergeCandidates = (
 export function EventDetail({
   initialEvent,
   initialCandidates,
+  memberId,
 }: EventDetailProps) {
   const [event, setEvent] = useState(initialEvent);
   const [isEditing, setIsEditing] = useState(false);
+  const [isInviteGenerating, setIsInviteGenerating] = useState(false);
   const [isAddingCandidate, setIsAddingCandidate] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [candidates, setCandidates] =
@@ -179,6 +183,21 @@ export function EventDetail({
     }
   };
 
+  const generateInviteUrl = async () => {
+    if (isInviteGenerating) return;
+    setIsInviteGenerating(true);
+    try {
+      const result = await createInviteToken(event.id, memberId);
+      setEvent((prev) => ({ ...prev, participationUrl: result.inviteUrl }));
+    } catch {
+      // 発行失敗はサイレント（次回リトライ可能）
+    } finally {
+      setIsInviteGenerating(false);
+    }
+  };
+
+  const isOwner = event.myRole === "owner";
+
   return (
     <>
       <main className="flex flex-1 flex-col items-center px-5 pb-14 pt-10">
@@ -220,32 +239,58 @@ export function EventDetail({
               <dt className="shrink-0">
                 <Link2 aria-label="参加用URL" size={21} strokeWidth={2} />
               </dt>
-              <dd
-                title={event.participationUrl}
-                className="min-w-0 flex-1 truncate whitespace-nowrap"
-              >
-                {event.participationUrl}
-              </dd>
-              <button
-                type="button"
-                aria-label="参加用リンクをコピー"
-                onClick={copyParticipationUrl}
-                className="absolute right-3 flex w-[68px] items-center justify-center gap-1 rounded-full bg-primary py-1 text-xs text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              >
-                <Clipboard aria-hidden="true" size={13} />
-                {copyStatus === "success" ? "完了" : "コピー"}
-              </button>
+              {event.participationUrl ? (
+                <>
+                  <dd
+                    title={event.participationUrl}
+                    className="min-w-0 flex-1 truncate whitespace-nowrap"
+                  >
+                    {event.participationUrl}
+                  </dd>
+                  <button
+                    type="button"
+                    aria-label="参加用リンクをコピー"
+                    onClick={copyParticipationUrl}
+                    className="absolute right-3 flex w-[68px] items-center justify-center gap-1 rounded-full bg-primary py-1 text-xs text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <Clipboard aria-hidden="true" size={13} />
+                    {copyStatus === "success" ? "完了" : "コピー"}
+                  </button>
+                </>
+              ) : isOwner ? (
+                <>
+                  <dd className="min-w-0 flex-1 truncate whitespace-nowrap text-foreground/45">
+                    招待URLなし
+                  </dd>
+                  <button
+                    type="button"
+                    aria-label="招待URLを発行"
+                    onClick={generateInviteUrl}
+                    disabled={isInviteGenerating}
+                    className="absolute right-3 flex w-[68px] items-center justify-center gap-1 rounded-full bg-primary py-1 text-xs text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60"
+                  >
+                    <Link2 aria-hidden="true" size={13} />
+                    {isInviteGenerating ? "..." : "発行"}
+                  </button>
+                </>
+              ) : (
+                <dd className="min-w-0 flex-1 truncate whitespace-nowrap text-foreground/45">
+                  招待URLなし
+                </dd>
+              )}
             </div>
           </dl>
 
-          <button
-            type="button"
-            onClick={openEditor}
-            className="absolute right-3 top-3 flex w-[68px] items-center justify-center gap-1 rounded-full bg-primary py-1 text-xs text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            <Pencil aria-hidden="true" size={13} />
-            編集
-          </button>
+          {isOwner && (
+            <button
+              type="button"
+              onClick={openEditor}
+              className="absolute right-3 top-3 flex w-[68px] items-center justify-center gap-1 rounded-full bg-primary py-1 text-xs text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <Pencil aria-hidden="true" size={13} />
+              編集
+            </button>
+          )}
 
           <button
             type="button"

@@ -9,6 +9,7 @@ export const mockEvents: Event[] = [
     details: "みんなでパークゴルフを楽しみましょう",
     participantCount: 0,
     participationUrl: "https://example.com/park-golf",
+    myRole: "owner",
   },
   {
     id: "izakaya",
@@ -18,5 +19,6 @@ export const mockEvents: Event[] = [
     details: "駅前のお店で集まります",
     participantCount: 4,
     participationUrl: "https://example.com/izakaya",
+    myRole: "member",
   },
 ];

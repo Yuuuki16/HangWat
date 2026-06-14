@@ -20,6 +20,9 @@ type EventDetailResponse = {
     description: string | null;
     inviteUrl: string | null;
     members: unknown[];
+    myMember: {
+      role: "owner" | "member";
+    };
   };
   candidates: {
     id: string;
@@ -69,6 +72,7 @@ const toEvent = (event: EventDetailResponse["event"]): Event => ({
   details: event.description ?? "",
   participantCount: event.members.length,
   participationUrl: event.inviteUrl ?? "",
+  myRole: event.myMember.role,
 });
 
 const toScheduleCandidate = (

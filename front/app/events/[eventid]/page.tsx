@@ -16,6 +16,7 @@ type LoadState =
       status: "success";
       event: Event;
       candidates: ScheduleCandidate[];
+      memberId: string;
     };
 
 const eventMemberStorageKeys = (eventId: string) => [
@@ -84,7 +85,7 @@ export default function EventTimelinePage() {
           return;
         }
 
-        setLoadState({ status: "success", event, candidates });
+        setLoadState({ status: "success", event, candidates, memberId: eventMemberId });
       } catch (error) {
         if (!isMounted) {
           return;
@@ -119,6 +120,7 @@ export default function EventTimelinePage() {
     <EventDetail
       initialEvent={loadState.event}
       initialCandidates={loadState.candidates}
+      memberId={loadState.memberId}
     />
   );
 }
