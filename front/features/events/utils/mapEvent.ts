@@ -10,5 +10,6 @@ export function mapEventListItem(item: EventListItemApi): Event {
     details: "",
     participantCount: item.memberCount,
     participationUrl: "",
+    myRole: "member",
   };
 }

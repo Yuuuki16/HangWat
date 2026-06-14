@@ -6,4 +6,5 @@ export type Event = {
   details: string;
   participantCount: number;
   participationUrl: string;
+  myRole: "owner" | "member";
 };
