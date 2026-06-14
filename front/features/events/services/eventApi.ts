@@ -19,6 +19,8 @@ export type CreateEventInput = {
   description: string | null;
 };
 
+export type UpdateEventInput = CreateEventInput;
+
 export type CreatedEventMember = {
   id: string;
   eventId: string;
@@ -41,6 +43,15 @@ export type CreatedEvent = {
   updatedAt: string;
 };
 
+export type UpdatedEvent = {
+  id: string;
+  title: string;
+  date: string | null;
+  location: EventLocationInput | null;
+  description: string | null;
+  updatedAt: string;
+};
+
 type ValidationDetail = {
   field: string;
   message: string;
@@ -49,6 +60,8 @@ type ValidationDetail = {
 type ApiResult<T> = { ok: true; data: T } | { ok: false; message: string };
 
 export type CreateEventResult = ApiResult<{ event: CreatedEvent }>;
+export type UpdateEventResult = ApiResult<{ event: UpdatedEvent }>;
+export type DeleteEventResult = ApiResult<{ message: string }>;
 
 export async function createEvent(
   input: CreateEventInput,
@@ -61,6 +74,29 @@ export async function createEvent(
       body: JSON.stringify(input),
     },
     "イベントの作成に失敗しました",
+  );
+}
+
+export async function updateEvent(
+  eventId: string,
+  input: UpdateEventInput,
+): Promise<UpdateEventResult> {
+  return request(
+    `/api/events/${encodeURIComponent(eventId)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    "イベントの更新に失敗しました",
+  );
+}
+
+export async function deleteEvent(eventId: string): Promise<DeleteEventResult> {
+  return request(
+    `/api/events/${encodeURIComponent(eventId)}`,
+    { method: "DELETE" },
+    "イベントの削除に失敗しました",
   );
 }
 
