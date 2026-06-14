@@ -163,6 +163,42 @@ pnpm dev:front
 - `GET /tasks`: task 一覧を取得
 - `POST /tasks`: task を作成
 
+## Integration Tests
+
+バックエンドの API 統合テストはテスト専用の PostgreSQL データベースを使って実行します。
+
+### セットアップ
+
+DB を Docker で起動します（未起動の場合）。
+
+```bash
+docker compose up -d db
+```
+
+`backend/.env.test` を作成します。
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5440/hangwat_test"
+SESSION_SECRET="test-session-secret-32-chars-long!!"
+FRONTEND_ORIGIN="http://localhost:3000"
+GOOGLE_MAPS_API_KEY=dummy
+```
+
+テスト用データベース `hangwat_test` を作成し、migration を適用します。
+
+```bash
+psql postgresql://postgres:postgres@localhost:5440/postgres -c "CREATE DATABASE hangwat_test;"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5440/hangwat_test" pnpm prisma:migrate
+```
+
+### 実行
+
+```bash
+pnpm test:integration
+```
+
+テストは `--test-concurrency=1` で逐次実行し、各テストケース前にテスト用 DB をリセットします。
+
 ## Verification
 
 ```bash
