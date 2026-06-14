@@ -42,6 +42,17 @@ class FakeInviteJoinRepository implements InviteJoinRepository {
     sessionTokenHash: string;
     sessionExpiresAt: Date;
   }) {
+    for (const member of this.members.values()) {
+      if (
+        member.eventId === input.eventId &&
+        member.displayName === input.displayName
+      ) {
+        throw new ApplicationError(
+          "CONFLICT",
+          "同じイベント内で同じ表示名が既に使われています",
+        );
+      }
+    }
     const now = new Date("2026-07-31T10:00:00.000Z");
     const eventMember: InviteJoinEventMemberRecord = {
       id: this.nextMemberId++,

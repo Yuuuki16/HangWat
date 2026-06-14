@@ -152,11 +152,6 @@ export const openApiSpec = {
         summary: "Join an event by invite token",
         tags: ["InviteJoin"],
         parameters: [{ $ref: "#/components/parameters/InviteToken" }],
-    "/api/locations/resolve-google-maps-url": {
-      post: {
-        summary: "Resolve Google Maps URL for a logged-in user",
-        tags: ["Location"],
-        security: [{ cookieAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -182,6 +177,40 @@ export const openApiSpec = {
         },
       },
     },
+    "/api/locations/resolve-google-maps-url": {
+      post: {
+        summary: "Resolve Google Maps URL for a logged-in user",
+        tags: ["Location"],
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/ResolveGoogleMapsUrlRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Resolved location",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ResolveGoogleMapsUrlResponse",
+                },
+              },
+            },
+          },
+          "400": { $ref: "#/components/responses/ValidationError" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "410": { $ref: "#/components/responses/Gone" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        },
+      },
+    },
     "/api/invite-tokens/{inviteToken}/rejoin": {
       post: {
         summary: "Rejoin an event by member session token",
@@ -201,20 +230,6 @@ export const openApiSpec = {
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/InviteRejoinResponse" },
-              schema: {
-                $ref: "#/components/schemas/ResolveGoogleMapsUrlRequest",
-              },
-            },
-          },
-        },
-        responses: {
-          "200": {
-            description: "Resolved location",
-            content: {
-              "application/json": {
-                schema: {
-                  $ref: "#/components/schemas/ResolveGoogleMapsUrlResponse",
-                },
               },
             },
           },

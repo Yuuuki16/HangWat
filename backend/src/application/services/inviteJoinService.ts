@@ -94,18 +94,6 @@ export class InviteJoinService {
     const inviteToken = await this.resolveActiveInviteToken(input.inviteToken);
     const displayName = input.displayName.trim();
 
-    const isDisplayNameTaken =
-      await this.inviteJoinRepository.isDisplayNameTaken(
-        inviteToken.eventId,
-        displayName,
-      );
-    if (isDisplayNameTaken) {
-      throw new ApplicationError(
-        "CONFLICT",
-        "同じイベント内で同じ表示名が既に使われています",
-      );
-    }
-
     const sessionToken = generateSessionToken();
     const sessionExpiresAt = new Date(Date.now() + memberSessionTtlMs);
     const result =
