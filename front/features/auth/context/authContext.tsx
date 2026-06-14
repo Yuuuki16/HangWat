@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -26,40 +27,46 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<AuthUser | null>(null);
+  const requestSeqRef = useRef(0);
 
-  const applyResult = useCallback((result: Awaited<ReturnType<typeof getCurrentUser>>) => {
-    if (result.ok) {
-      setUser(result.user);
-      setStatus("authenticated");
-      return;
-    }
+  const applyResult = useCallback(
+    (result: Awaited<ReturnType<typeof getCurrentUser>>) => {
+      if (result.ok) {
+        setUser(result.user);
+        setStatus("authenticated");
+        return;
+      }
 
-    setUser(null);
-    setStatus("unauthenticated");
-  }, []);
+      setUser(null);
+      setStatus("unauthenticated");
+    },
+    [],
+  );
 
   const refresh = useCallback(async () => {
+    const seq = ++requestSeqRef.current;
     setStatus("loading");
-    applyResult(await getCurrentUser());
+    const result = await getCurrentUser();
+
+    if (seq === requestSeqRef.current) {
+      applyResult(result);
+    }
   }, [applyResult]);
 
   const clearUser = useCallback(() => {
+    requestSeqRef.current += 1;
     setUser(null);
     setStatus("unauthenticated");
   }, []);
 
   useEffect(() => {
-    let isActive = true;
+    const seq = ++requestSeqRef.current;
 
     getCurrentUser().then((result) => {
-      if (isActive) {
+      if (seq === requestSeqRef.current) {
         applyResult(result);
       }
     });
-
-    return () => {
-      isActive = false;
-    };
   }, [applyResult]);
 
   return (
