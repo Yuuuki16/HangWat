@@ -1,19 +1,9 @@
 import Link from "next/link";
-import { EventListSection } from "@/features/events/components/eventListSection";
-import { mockEvents } from "@/features/events/data/mockEvents";
+import { HomeEventBoard } from "@/features/events/components/homeEventBoard";
 
 export const dynamic = "force-dynamic";
 
 export default function HomePage() {
-  const today = new Date();
-  const todayText = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, "0"),
-    String(today.getDate()).padStart(2, "0"),
-  ].join("-");
-  const upcomingEvents = mockEvents.filter((event) => event.date >= todayText);
-  const pastEvents = mockEvents.filter((event) => event.date < todayText);
-
   return (
     <main className="flex flex-1 flex-col items-center px-5 pb-14">
       <div className="w-full max-w-md pb-6 pt-10">
@@ -22,25 +12,7 @@ export default function HomePage() {
         </h1>
       </div>
 
-      <div
-        aria-label="イベント一覧"
-        className="grid w-full max-w-md gap-5"
-      >
-        <EventListSection
-          title="これからの予定"
-          description="開催予定のイベント"
-          events={upcomingEvents}
-          defaultOpen
-          variant="upcoming"
-        />
-        <EventListSection
-          title="終わった予定"
-          description="これまでに開催したイベント"
-          events={pastEvents}
-          defaultOpen={false}
-          variant="past"
-        />
-      </div>
+      <HomeEventBoard />
 
       <Link
         href="/events/new"

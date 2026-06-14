@@ -36,13 +36,22 @@ export function createEventRoutes(
   const app = new Hono();
 
   app.get("/events", async (c) => {
-    const userId = validateUserIdHeader(c.req.header("x-user-id"));
-    if (!userId.ok) {
+    const sessionUserId = await getSignedCookie(
+      c,
+      sessionSecret,
+      sessionCookieName,
+    );
+    if (!sessionUserId) {
+      return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
+    }
+
+    const userId = parseUserId(sessionUserId);
+    if (userId === null) {
       return errorResponse(c, "UNAUTHORIZED", "認証が必要です", 401);
     }
 
     try {
-      const result = await eventService.listEvents({ userId: userId.value });
+      const result = await eventService.listEvents({ userId });
       return c.json(result);
     } catch (error) {
       return handleRouteError(c, error);
@@ -183,21 +192,6 @@ export function createEventRoutes(
   });
 
   return app;
-}
-
-function validateUserIdHeader(
-  headerValue: string | undefined,
-): { ok: true; value: bigint } | { ok: false } {
-  const parsed = parseId(
-    headerValue,
-    "x-user-id",
-    "x-user-id が不正です",
-  );
-  if (!parsed.ok) {
-    return { ok: false };
-  }
-
-  return { ok: true, value: parsed.value };
 }
 
 function parseUserId(value: string): bigint | null {

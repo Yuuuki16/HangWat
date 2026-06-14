@@ -49,9 +49,27 @@ export type UpdatedEvent = {
   updatedAt: string;
 };
 
+export type EventListItemApi = {
+  id: string;
+  title: string;
+  date: string | null;
+  location: EventLocationInput | null;
+  memberCount: number;
+  isConfirmed: boolean;
+};
+
 export type CreateEventResult = ApiResult<{ event: CreatedEvent }>;
 export type UpdateEventResult = ApiResult<{ event: UpdatedEvent }>;
 export type DeleteEventResult = ApiResult<{ message: string }>;
+export type ListEventsResult = ApiResult<{ events: EventListItemApi[] }>;
+
+export async function listEvents(): Promise<ListEventsResult> {
+  return request(
+    "/api/events",
+    { method: "GET" },
+    "イベント一覧の取得に失敗しました",
+  );
+}
 
 export async function createEvent(
   input: CreateEventInput,
