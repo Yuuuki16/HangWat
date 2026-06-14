@@ -5,6 +5,7 @@ import type {
 
 const userAgent =
   "Mozilla/5.0 (compatible; HangWat/1.0; +https://github.com/Yuuuki16/HangWat)";
+const FETCH_TIMEOUT_MS = 10_000;
 
 const allowedHostnames = new Set([
   "maps.app.goo.gl",
@@ -33,10 +34,13 @@ export class FetchGoogleMapsUrlResolver implements GoogleMapsUrlResolver {
     let resolvedUrl = url;
     let html = "";
 
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
       const response = await fetch(url, {
         redirect: "follow",
         headers: { "user-agent": userAgent },
+        signal: controller.signal,
       });
       resolvedUrl = response.url || url;
 
@@ -46,6 +50,8 @@ export class FetchGoogleMapsUrlResolver implements GoogleMapsUrlResolver {
       }
     } catch {
       return parseGoogleMapsLocation(resolvedUrl, html);
+    } finally {
+      clearTimeout(timer);
     }
 
     return parseGoogleMapsLocation(resolvedUrl, html);

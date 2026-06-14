@@ -262,15 +262,6 @@ async function validateResolveGoogleMapsUrlBody(
   return { ok: true, value: { url } };
 }
 
-const allowedGoogleMapsHostnames = new Set([
-  "maps.app.goo.gl",
-  "goo.gl",
-  "maps.google.com",
-  "maps.google.co.jp",
-  "www.google.com",
-  "google.com",
-]);
-
 function isAllowedGoogleMapsUrl(value: string): boolean {
   let url: URL;
   try {
@@ -284,7 +275,14 @@ function isAllowedGoogleMapsUrl(value: string): boolean {
   }
 
   const hostname = url.hostname.toLowerCase();
-  return allowedGoogleMapsHostnames.has(hostname);
+  if (hostname === "maps.app.goo.gl") return true;
+  if (hostname === "goo.gl" && url.pathname.startsWith("/maps")) return true;
+  if (/^maps\.google\.(?:[a-z]{2,3}|co\.[a-z]{2})$/.test(hostname)) return true;
+  if (hostname === "google.com" || hostname === "www.google.com") {
+    return url.pathname.startsWith("/maps");
+  }
+
+  return false;
 }
 
 function parseId(
