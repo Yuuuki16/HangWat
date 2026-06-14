@@ -5,9 +5,10 @@ import { formatEventDate } from "@/features/events/utils/formatEventDate";
 
 type EventCardProps = {
   event: Event;
+  onDelete: (event: Event) => void;
 };
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, onDelete }: EventCardProps) {
   return (
     <article className="relative rounded-base border-2 border-foreground bg-event px-3 py-2">
       <Link
@@ -35,6 +36,8 @@ export function EventCard({ event }: EventCardProps) {
 
       <button
         type="button"
+        aria-label={`${event.title}を削除`}
+        onClick={() => onDelete(event)}
         className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 items-center gap-1 rounded-full bg-danger px-3 py-1 text-xs text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
       >
         <Trash2 aria-hidden="true" size={14} />
