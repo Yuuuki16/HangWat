@@ -12,7 +12,7 @@ Backend 実装の詳細は [49-websocket.md](./49-websocket.md) を参照。
 
 `front/.env` に以下を追加する。
 
-```
+```env
 NEXT_PUBLIC_WS_BASE_URL=ws://localhost:4000
 ```
 
@@ -24,7 +24,7 @@ NEXT_PUBLIC_WS_BASE_URL=ws://localhost:4000
 
 ### Endpoint
 
-```
+```txt
 WS /ws/events/:eventId/candidates/:candidateId?memberId=<eventMemberId>
 ```
 
@@ -181,16 +181,16 @@ useCommentRealtime({
 
 ## 注意点
 
-- `likedByMe` はユーザーごとに異なるため、WebSocket イベントには含まれない。いいねを押した本人の `likedByMe` は REST API のレスポンスで反映する。
+- `comment.created` の `comment.likedByMe` は常に `false`。自分が投稿したコメントの `likedByMe` は REST API のレスポンスで確認する。
+- `comment.like.updated` は `likeCount` のみ配信する。自分のいいね状態（`likedByMe`）はフロント側の状態管理で更新する。
 - WebSocket 接続が切れても画面を壊さない。REST API の再取得で最新状態に戻す。
 - 同じ `comment.id` が来ても重複追加しない（上記の `some` チェック参照）。
-- `comment.created` で受信した `likedByMe` は常に `false`（自分が投稿した場合も同様）。
 
 ---
 
 ## テスト観点
 
-```
+```txt
 - コメント画面表示時に WS 接続する
 - 画面離脱時に WS 接続を閉じる
 - comment.created でコメントが一覧に追加される

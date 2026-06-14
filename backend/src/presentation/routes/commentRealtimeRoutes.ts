@@ -1,13 +1,11 @@
 import { Hono } from "hono";
 import type { UpgradeWebSocket } from "hono/ws";
+import type { WebSocket } from "ws";
 
-import { ApplicationError } from "../../application/errors/applicationError.js";
 import type { CommentRealtimeService } from "../../application/services/commentRealtimeService.js";
-import type { CommentRepository } from "../../domain/repositories/commentRepository.js";
 
 type Dependencies = {
   commentRealtimeService: CommentRealtimeService;
-  commentRepository: CommentRepository;
   upgradeWebSocket: UpgradeWebSocket;
 };
 
@@ -30,7 +28,6 @@ function parseId(value: string | undefined | null): bigint | null {
 
 export function createCommentRealtimeRoutes({
   commentRealtimeService,
-  commentRepository,
   upgradeWebSocket,
 }: Dependencies) {
   const app = new Hono();
@@ -52,35 +49,22 @@ export function createCommentRealtimeRoutes({
           }
 
           try {
-            const event = await commentRepository.findEventById(eventId);
-            if (event === null) {
-              ws.close(1008, "Event not found");
+            const result = await commentRealtimeService.subscribeIfAuthorized({
+              eventId,
+              candidateId,
+              memberId,
+              connection: ws.raw as unknown as WebSocket,
+            });
+
+            if (!result.ok) {
+              const code = result.reason === "Unauthorized" ? 1008 : 1008;
+              ws.close(code, result.reason);
               return;
             }
 
-            const candidate =
-              await commentRepository.findCandidateById(candidateId);
-            if (candidate === null || candidate.eventId !== event.id) {
-              ws.close(1008, "Candidate not found");
-              return;
-            }
-
-            const member =
-              await commentRepository.findEventMemberById(memberId);
-            if (member === null || member.eventId !== event.id) {
-              ws.close(1008, "Unauthorized");
-              return;
-            }
-
-            candidateIdStr = candidateId.toString();
-            commentRealtimeService.subscribe(
-              candidateIdStr,
-              ws.raw as unknown as WebSocket,
-            );
+            candidateIdStr = result.candidateIdStr;
           } catch (error) {
-            if (!(error instanceof ApplicationError)) {
-              console.error(error);
-            }
+            console.error(error);
             ws.close(1011, "Server error");
           }
         },

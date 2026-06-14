@@ -23,6 +23,10 @@ export async function createEvent(
     }),
   });
 
+  if (res.status !== 201) {
+    throw new Error(`createEvent failed: status=${res.status}, body=${await res.text()}`);
+  }
+
   const body = (await res.json()) as {
     event: { id: string; myMember: { id: string } };
   };
@@ -54,6 +58,10 @@ export async function createCandidate(
     }),
   });
 
+  if (res.status !== 201) {
+    throw new Error(`createCandidate failed: status=${res.status}, body=${await res.text()}`);
+  }
+
   const body = (await res.json()) as { candidate: { id: string } };
   return { candidateId: body.candidate.id };
 }
@@ -77,6 +85,10 @@ export async function createComment(
     },
   );
 
+  if (res.status !== 201) {
+    throw new Error(`createComment failed: status=${res.status}, body=${await res.text()}`);
+  }
+
   const resBody = (await res.json()) as { comment: { id: string } };
   return { commentId: resBody.comment.id };
 }
@@ -95,6 +107,10 @@ export async function createInviteToken(
     },
     body: JSON.stringify({ expiresAt }),
   });
+
+  if (res.status !== 201) {
+    throw new Error(`createInviteToken failed: status=${res.status}, body=${await res.text()}`);
+  }
 
   const body = (await res.json()) as {
     inviteToken: { id: string; inviteToken: string };
