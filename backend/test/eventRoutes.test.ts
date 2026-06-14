@@ -129,16 +129,29 @@ async function makeSessionCookie(userId: string) {
 
 describe("eventRoutes GET /events", () => {
   it("returns events", async () => {
-    const app = createEventRoutes(createRouteService(), testSessionSecret);
+    let receivedInput:
+      | Parameters<EventRouteService["listEvents"]>[0]
+      | undefined;
+    const app = createEventRoutes(
+      createRouteService({
+        async listEvents(input) {
+          receivedInput = input;
+          return { events: [sampleEvent] };
+        },
+      }),
+      testSessionSecret,
+    );
+    const cookie = await makeSessionCookie("1");
     const response = await app.request("/events", {
-      headers: { "x-user-id": "1" },
+      headers: { Cookie: cookie },
     });
 
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { events: [sampleEvent] });
+    assert.equal(receivedInput?.userId, 1n);
   });
 
-  it("returns 401 without x-user-id", async () => {
+  it("returns 401 without session cookie", async () => {
     const app = createEventRoutes(createRouteService(), testSessionSecret);
     const response = await app.request("/events");
 
@@ -151,15 +164,6 @@ describe("eventRoutes GET /events", () => {
     });
   });
 
-  it("returns 401 with invalid x-user-id", async () => {
-    const app = createEventRoutes(createRouteService(), testSessionSecret);
-    const response = await app.request("/events", {
-      headers: { "x-user-id": "invalid" },
-    });
-
-    assert.equal(response.status, 401);
-  });
-
   it("maps list service errors to common error response", async () => {
     const app = createEventRoutes(
       createRouteService({
@@ -170,8 +174,9 @@ describe("eventRoutes GET /events", () => {
       testSessionSecret,
     );
 
+    const cookie = await makeSessionCookie("999");
     const response = await app.request("/events", {
-      headers: { "x-user-id": "999" },
+      headers: { Cookie: cookie },
     });
 
     assert.equal(response.status, 401);

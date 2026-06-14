@@ -3,6 +3,7 @@
 import { CalendarClock, CheckCircle2, ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 import { EventCard } from "@/features/events/components/eventCard";
+import { deleteEvent } from "@/features/events/services/eventApi";
 import type { Event } from "@/features/events/types/event";
 
 type EventListSectionProps = {
@@ -23,19 +24,39 @@ export function EventListSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [visibleEvents, setVisibleEvents] = useState(events);
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(
+    null,
+  );
   const contentId = useId();
   const deleteDialogTitleId = useId();
   const Icon = variant === "upcoming" ? CalendarClock : CheckCircle2;
 
-  const handleDelete = () => {
-    if (!eventToDelete) {
+  const closeDeleteDialog = () => {
+    setEventToDelete(null);
+    setDeleteErrorMessage(null);
+  };
+
+  const handleDelete = async () => {
+    if (!eventToDelete || isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteErrorMessage(null);
+
+    const result = await deleteEvent(eventToDelete.id);
+    setIsDeleting(false);
+
+    if (!result.ok) {
+      setDeleteErrorMessage(result.message);
       return;
     }
 
     setVisibleEvents((currentEvents) =>
       currentEvents.filter((event) => event.id !== eventToDelete.id),
     );
-    setEventToDelete(null);
+    closeDeleteDialog();
   };
 
   return (
@@ -115,7 +136,7 @@ export function EventListSection({
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-7 py-10"
           role="presentation"
-          onMouseDown={() => setEventToDelete(null)}
+          onMouseDown={closeDeleteDialog}
         >
           <section
             role="alertdialog"
@@ -131,18 +152,29 @@ export function EventListSection({
               本当に消しますか？
             </h2>
 
+            {deleteErrorMessage && (
+              <p
+                role="alert"
+                className="mt-4 whitespace-pre-line rounded-base border-2 border-red-400 bg-red-50 px-4 py-2 text-sm text-red-700"
+              >
+                {deleteErrorMessage}
+              </p>
+            )}
+
             <div className="mt-6 flex items-center justify-center gap-7">
               <button
                 type="button"
                 onClick={handleDelete}
-                className="min-w-24 rounded-[10px] bg-danger px-5 py-2 text-lg text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+                disabled={isDeleting}
+                className="min-w-24 rounded-[10px] bg-danger px-5 py-2 text-lg text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
-                消す
+                {isDeleting ? "削除中..." : "消す"}
               </button>
               <button
                 type="button"
-                onClick={() => setEventToDelete(null)}
-                className="min-w-24 rounded-[10px] bg-primary px-4 py-2 text-lg text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                onClick={closeDeleteDialog}
+                disabled={isDeleting}
+                className="min-w-24 rounded-[10px] bg-primary px-4 py-2 text-lg text-white shadow-md transition-all hover:-translate-y-0.5 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 消さない
               </button>

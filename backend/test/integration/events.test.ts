@@ -82,7 +82,7 @@ describe("GET /api/events", () => {
 
   it("ログイン済みユーザーのイベント一覧を取得できる", async () => {
     const app = createTestApp();
-    const { cookie, userId } = await registerAndLogin(app);
+    const { cookie } = await registerAndLogin(app);
 
     await app.request("/api/events", {
       method: "POST",
@@ -91,7 +91,7 @@ describe("GET /api/events", () => {
     });
 
     const res = await app.request("/api/events", {
-      headers: { "x-user-id": userId },
+      headers: { cookie },
     });
 
     assert.equal(res.status, 200);
@@ -102,7 +102,7 @@ describe("GET /api/events", () => {
     assert.equal(typeof body.events[0].memberCount, "number");
   });
 
-  it("x-user-id未指定なら401", async () => {
+  it("セッションCookie未指定なら401", async () => {
     const app = createTestApp();
     const res = await app.request("/api/events");
     assert.equal(res.status, 401);
