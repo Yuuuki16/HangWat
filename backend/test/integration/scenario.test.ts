@@ -148,5 +148,67 @@ describe("主要シナリオ: 登録→ログイン→イベント作成→候�
     const unlikeBody = await unlikeRes.json();
     assert.equal(unlikeBody.likedByMe, false);
     assert.equal(unlikeBody.likeCount, 0);
+
+    // 12. 招待トークン取得
+    const inviteToken: string = tokenBody.inviteToken.url.split("/").at(-1)!;
+
+    // 13. ゲスト参加
+    const joinRes = await app.request(`/api/invite-tokens/${inviteToken}/join`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "ゲスト太郎" }),
+    });
+    assert.equal(joinRes.status, 201);
+    const joinBody = await joinRes.json();
+    const guestMemberId: string = joinBody.eventMember.id;
+    const guestSessionToken: string = joinBody.memberSession.token;
+    assert.equal(joinBody.eventMember.memberType, "guest");
+
+    // 14. 候補確定
+    const confirmRes = await app.request(
+      `/api/events/${eventId}/candidates/${candidateId}/confirm`,
+      {
+        method: "POST",
+        headers: { "x-event-member-id": memberId },
+      },
+    );
+    assert.equal(confirmRes.status, 200);
+    const confirmBody = await confirmRes.json();
+    assert.equal(confirmBody.event.confirmedCandidateId, candidateId);
+    assert.equal(confirmBody.candidate.status, "confirmed");
+
+    // 15. 確定取り消し
+    const cancelRes = await app.request(
+      `/api/events/${eventId}/candidates/${candidateId}/cancel-confirm`,
+      {
+        method: "POST",
+        headers: { "x-event-member-id": memberId },
+      },
+    );
+    assert.equal(cancelRes.status, 200);
+    const cancelBody = await cancelRes.json();
+    assert.equal(cancelBody.event.confirmedCandidateId, null);
+    assert.equal(cancelBody.candidate.status, "pending");
+
+    // 16. ゲスト退出
+    const leaveRes = await app.request(
+      `/api/events/${eventId}/members/${guestMemberId}`,
+      {
+        method: "DELETE",
+        headers: { "x-event-member-id": guestMemberId },
+      },
+    );
+    assert.equal(leaveRes.status, 200);
+
+    // メンバー一覧からゲストが消えていることを確認
+    const membersRes = await app.request(`/api/events/${eventId}/members`, {
+      headers: { "x-event-member-id": memberId },
+    });
+    assert.equal(membersRes.status, 200);
+    const membersBody = await membersRes.json();
+    const guestStillExists = membersBody.members.some(
+      (m: { id: string }) => m.id === guestMemberId,
+    );
+    assert.equal(guestStillExists, false);
   });
 });

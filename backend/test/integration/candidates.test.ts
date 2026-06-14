@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
 
 import { registerLoginAndCreateEvent } from "../helpers/auth.js";
-import { createCandidate } from "../helpers/seed.js";
+import { createCandidate, createInviteToken } from "../helpers/seed.js";
+import { guestJoin } from "../helpers/auth.js";
 import { createTestApp } from "../helpers/testApp.js";
 import { resetTestDb } from "../helpers/testDb.js";
 
@@ -205,6 +206,154 @@ describe("DELETE /api/events/:eventId/candidates/:candidateId", () => {
       {
         method: "DELETE",
         headers: { "x-event-member-id": otherMemberId },
+      },
+    );
+
+    assert.equal(res.status, 403);
+  });
+});
+
+describe("POST /api/events/:eventId/candidates/:candidateId/confirm", () => {
+  beforeEach(async () => {
+    await resetTestDb();
+  });
+
+  it("ownerなら候補を確定できる", async () => {
+    const app = createTestApp();
+    const { eventId, memberId } = await registerLoginAndCreateEvent(app);
+    const { candidateId } = await createCandidate(app, eventId, memberId);
+
+    const res = await app.request(
+      `/api/events/${eventId}/candidates/${candidateId}/confirm`,
+      {
+        method: "POST",
+        headers: { "x-event-member-id": memberId },
+      },
+    );
+
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.event.confirmedCandidateId, candidateId);
+    assert.equal(body.candidate.status, "confirmed");
+  });
+
+  it("ownerでなければ403", async () => {
+    const app = createTestApp();
+    const { eventId, memberId } = await registerLoginAndCreateEvent(app);
+    const { candidateId } = await createCandidate(app, eventId, memberId);
+    const { inviteToken } = await createInviteToken(app, eventId, memberId);
+    const { memberId: guestMemberId } = await guestJoin(app, inviteToken, "ゲスト");
+
+    const res = await app.request(
+      `/api/events/${eventId}/candidates/${candidateId}/confirm`,
+      {
+        method: "POST",
+        headers: { "x-event-member-id": guestMemberId },
+      },
+    );
+
+    assert.equal(res.status, 403);
+  });
+
+  it("すでに確定済みなら409", async () => {
+    const app = createTestApp();
+    const { eventId, memberId } = await registerLoginAndCreateEvent(app);
+    const { candidateId } = await createCandidate(app, eventId, memberId);
+    const { candidateId: candidateId2 } = await createCandidate(
+      app,
+      eventId,
+      memberId,
+      { title: "候補B" },
+    );
+
+    await app.request(
+      `/api/events/${eventId}/candidates/${candidateId}/confirm`,
+      {
+        method: "POST",
+        headers: { "x-event-member-id": memberId },
+      },
+    );
+
+    const res = await app.request(
+      `/api/events/${eventId}/candidates/${candidateId2}/confirm`,
+      {
+        method: "POST",
+        headers: { "x-event-member-id": memberId },
+      },
+    );
+
+    assert.equal(res.status, 409);
+  });
+});
+
+describe("POST /api/events/:eventId/candidates/:candidateId/cancel-confirm", () => {
+  beforeEach(async () => {
+    await resetTestDb();
+  });
+
+  it("ownerなら確定を取り消せる", async () => {
+    const app = createTestApp();
+    const { eventId, memberId } = await registerLoginAndCreateEvent(app);
+    const { candidateId } = await createCandidate(app, eventId, memberId);
+
+    await app.request(
+      `/api/events/${eventId}/candidates/${candidateId}/confirm`,
+      {
+        method: "POST",
+        headers: { "x-event-member-id": memberId },
+      },
+    );
+
+    const res = await app.request(
+      `/api/events/${eventId}/candidates/${candidateId}/cancel-confirm`,
+      {
+        method: "POST",
+        headers: { "x-event-member-id": memberId },
+      },
+    );
+
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.event.confirmedCandidateId, null);
+    assert.equal(body.candidate.status, "pending");
+  });
+
+  it("確定されていない候補を取り消すと409", async () => {
+    const app = createTestApp();
+    const { eventId, memberId } = await registerLoginAndCreateEvent(app);
+    const { candidateId } = await createCandidate(app, eventId, memberId);
+
+    const res = await app.request(
+      `/api/events/${eventId}/candidates/${candidateId}/cancel-confirm`,
+      {
+        method: "POST",
+        headers: { "x-event-member-id": memberId },
+      },
+    );
+
+    assert.equal(res.status, 409);
+  });
+
+  it("ownerでなければ403", async () => {
+    const app = createTestApp();
+    const { eventId, memberId } = await registerLoginAndCreateEvent(app);
+    const { candidateId } = await createCandidate(app, eventId, memberId);
+    const { inviteToken } = await createInviteToken(app, eventId, memberId);
+    const { memberId: guestMemberId } = await guestJoin(app, inviteToken, "ゲスト");
+
+    await app.request(
+      `/api/events/${eventId}/candidates/${candidateId}/confirm`,
+      {
+        method: "POST",
+        headers: { "x-event-member-id": memberId },
+      },
+    );
+
+    const res = await app.request(
+      `/api/events/${eventId}/candidates/${candidateId}/cancel-confirm`,
+      {
+        method: "POST",
+        headers: { "x-event-member-id": guestMemberId },
       },
     );
 

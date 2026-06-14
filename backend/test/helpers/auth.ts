@@ -83,12 +83,12 @@ export async function guestJoin(
   });
 
   const body = (await res.json()) as {
-    member: { id: string };
+    eventMember: { id: string };
     memberSession: { token: string };
   };
 
   return {
-    memberId: body.member.id,
+    memberId: body.eventMember.id,
     memberSessionToken: body.memberSession.token,
   };
 }
