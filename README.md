@@ -189,3 +189,38 @@ pnpm dev:front
 ```bash
 pnpm verify
 ```
+
+## GCP デプロイ（Cloud Run）
+
+インフラ構成: Cloud Run（backend / frontend）+ Cloud SQL（PostgreSQL）+ Secret Manager
+
+### 初回セットアップ
+
+```bash
+gcloud auth login && gcloud config set project hangwat
+./scripts/gcp-setup.sh
+```
+
+Secret 登録:
+
+```bash
+printf 'YOUR_KEY' | gcloud secrets create GOOGLE_MAPS_API_KEY --data-file=- --project=hangwat
+```
+
+IAM 権限付与:
+
+```bash
+SA="898027105416-compute@developer.gserviceaccount.com"
+gcloud projects add-iam-policy-binding hangwat --member="serviceAccount:${SA}" --role="roles/secretmanager.secretAccessor"
+gcloud projects add-iam-policy-binding hangwat --member="serviceAccount:${SA}" --role="roles/cloudsql.client"
+```
+
+### デプロイ
+
+```bash
+./scripts/deploy.sh all      # backend + frontend 両方
+./scripts/deploy.sh backend  # backend のみ
+./scripts/deploy.sh front    # frontend のみ
+```
+
+backend 起動時に `prisma migrate deploy` を自動実行します。
