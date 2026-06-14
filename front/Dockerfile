@@ -1,8 +1,8 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 RUN corepack enable
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --config.unsafe-perm=true
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000
