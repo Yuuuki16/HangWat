@@ -30,6 +30,7 @@ gcloud artifacts repositories create "$AR_REPO" \
 echo "=== Cloud SQL 作成（数分かかる） ==="
 gcloud sql instances create "$DB_INSTANCE" \
   --database-version=POSTGRES_17 \
+  --edition=ENTERPRISE \
   --tier=db-f1-micro \
   --region="$REGION" \
   --project="$PROJECT_ID" || echo "既存スキップ"
