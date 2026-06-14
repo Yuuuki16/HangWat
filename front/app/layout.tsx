@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Pacifico } from "next/font/google";
 import { HeaderGate } from "@/components/layout/headerGate";
+import { AuthGuard } from "@/features/auth/components/authGuard";
+import { AuthProvider } from "@/features/auth/context/authContext";
 import "./globals.css";
 
 const inter = Inter({
@@ -30,8 +32,10 @@ export default function RootLayout({
       className={`${inter.variable} ${pacifico.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <HeaderGate />
-        {children}
+        <AuthProvider>
+          <HeaderGate />
+          <AuthGuard>{children}</AuthGuard>
+        </AuthProvider>
       </body>
     </html>
   );

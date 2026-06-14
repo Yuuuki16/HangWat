@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AuthFormField } from "@/features/auth/components/authFormField";
+import { useAuth } from "@/features/auth/context/authContext";
 import { loginUser, registerUser } from "@/features/auth/services/authApi";
 
 export function SignupForm() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -33,6 +35,7 @@ export function SignupForm() {
       const loginResult = await loginUser({ email, password });
 
       if (loginResult.ok) {
+        await refresh();
         router.push("/home");
         return;
       }

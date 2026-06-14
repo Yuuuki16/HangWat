@@ -4,6 +4,9 @@ import { LogOut, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
+import { useAuth } from "@/features/auth/context/authContext";
+import { logoutUser } from "@/features/auth/services/authApi";
+
 const PROFILE_STORAGE_KEY = "hangwat-profile";
 const DEFAULT_PROFILE = {
   username: "ユーザー",
@@ -56,9 +59,16 @@ function loadProfile(): Profile {
 
 export function ProfileMenu() {
   const router = useRouter();
+  const { user, clearUser } = useAuth();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
   const [draftColor, setDraftColor] = useState(DEFAULT_PROFILE.color);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutErrorMessage, setLogoutErrorMessage] = useState<string | null>(
+    null,
+  );
+
+  const displayName = user?.name ?? profile.username;
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
@@ -76,12 +86,13 @@ export function ProfileMenu() {
   };
 
   const closeSettings = () => {
+    setLogoutErrorMessage(null);
     dialogRef.current?.close();
   };
 
   const handleSave = (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
-    const nextProfile = { username: profile.username, color: draftColor };
+    const nextProfile = { username: displayName, color: draftColor };
     window.localStorage.setItem(
       PROFILE_STORAGE_KEY,
       JSON.stringify(nextProfile),
@@ -90,23 +101,42 @@ export function ProfileMenu() {
     closeSettings();
   };
 
-  const handleLogout = () => {
-    window.localStorage.removeItem(PROFILE_STORAGE_KEY);
-    setProfile(DEFAULT_PROFILE);
-    closeSettings();
-    router.push("/sign-in");
+  const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setLogoutErrorMessage(null);
+    setIsLoggingOut(true);
+
+    try {
+      const result = await logoutUser();
+
+      if (!result.ok) {
+        setLogoutErrorMessage(result.message);
+        return;
+      }
+
+      window.localStorage.removeItem(PROFILE_STORAGE_KEY);
+      setProfile(DEFAULT_PROFILE);
+      clearUser();
+      closeSettings();
+      router.push("/sign-in");
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
     <>
       <button
         type="button"
-        aria-label={`${profile.username}のプロフィール設定を開く`}
+        aria-label={`${displayName}のプロフィール設定を開く`}
         onClick={openSettings}
         className="flex size-8 items-center justify-center justify-self-end rounded-full text-sm font-semibold text-foreground shadow-sm transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         style={{ backgroundColor: profile.color }}
       >
-        {getInitial(profile.username)}
+        {getInitial(displayName)}
       </button>
 
       <dialog
@@ -142,13 +172,13 @@ export function ProfileMenu() {
               className="flex size-20 items-center justify-center rounded-full text-3xl font-semibold text-foreground shadow-md"
               style={{ backgroundColor: draftColor }}
             >
-              {getInitial(profile.username)}
+              {getInitial(displayName)}
             </span>
             <p
-              title={profile.username}
+              title={displayName}
               className="mt-3 max-w-full truncate text-center text-lg font-medium text-foreground"
             >
-              {profile.username}
+              {displayName}
             </p>
           </div>
 
@@ -187,14 +217,24 @@ export function ProfileMenu() {
             </div>
           </fieldset>
 
+          {logoutErrorMessage && (
+            <p
+              role="alert"
+              className="mt-6 whitespace-pre-line rounded-base border-2 border-danger bg-danger/10 px-4 py-3 text-sm text-danger"
+            >
+              {logoutErrorMessage}
+            </p>
+          )}
+
           <div className="mt-8 flex items-center justify-between gap-4">
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center gap-1.5 rounded-base border-2 border-danger px-4 py-2 text-sm text-danger transition-colors hover:bg-danger/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
+              disabled={isLoggingOut}
+              className="flex items-center gap-1.5 rounded-base border-2 border-danger px-4 py-2 text-sm text-danger transition-colors hover:bg-danger/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger disabled:cursor-not-allowed disabled:opacity-60"
             >
               <LogOut aria-hidden="true" size={17} />
-              ログアウト
+              {isLoggingOut ? "ログアウト中..." : "ログアウト"}
             </button>
             <button
               type="submit"
