@@ -188,7 +188,7 @@ GOOGLE_MAPS_API_KEY=dummy
 
 ```bash
 psql postgresql://postgres:postgres@localhost:5440/postgres -c "CREATE DATABASE hangwat_test;"
-DATABASE_URL="postgresql://postgres:postgres@localhost:5440/hangwat_test" pnpm prisma:migrate
+DATABASE_URL="postgresql://postgres:postgres@localhost:5440/hangwat_test" pnpm prisma:migrate:deploy
 ```
 
 ### 実行
