@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AuthFormField } from "@/features/auth/components/authFormField";
+import { useAuth } from "@/features/auth/context/authContext";
 import { loginUser } from "@/features/auth/services/authApi";
 
 export function LoginForm() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -25,6 +27,7 @@ export function LoginForm() {
       const result = await loginUser({ email, password });
 
       if (result.ok) {
+        await refresh();
         router.push("/home");
         return;
       }
