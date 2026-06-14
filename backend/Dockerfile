@@ -15,7 +15,6 @@ RUN pnpm --filter backend build
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=8080
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 RUN ["apk", "add", "--no-cache", "openssl"]
 RUN ["apk", "upgrade", "--no-cache", "openssl", "libssl3", "libcrypto3"]
@@ -32,6 +31,6 @@ RUN ["rm", "-rf", "/root/.cache/node/corepack", "/usr/local/lib/node_modules/npm
 RUN ["chmod", "+x", "backend/docker-entrypoint.sh"]
 RUN ["chown", "-R", "appuser:appgroup", "/app"]
 USER appuser
-EXPOSE 8080
+EXPOSE 4000
 ENTRYPOINT ["backend/docker-entrypoint.sh"]
 CMD ["node", "backend/dist/index.js"]

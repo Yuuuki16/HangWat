@@ -38,10 +38,6 @@ import { createLocationRoutes } from "./presentation/routes/locationRoutes.js";
 import { createScheduleCandidateRoutes } from "./presentation/routes/scheduleCandidateRoutes.js";
 
 export function createApp() {
-  if (process.env.DEPLOY_SMOKE_MODE === "true") {
-    return createDeploySmokeApp();
-  }
-
   const sessionSecret = process.env.SESSION_SECRET;
   if (sessionSecret === undefined || sessionSecret.length === 0) {
     throw new Error("SESSION_SECRET is not set");
@@ -139,31 +135,4 @@ export function createApp() {
   app.route("/", createHealthRoutes(healthService));
 
   return { app, injectWebSocket };
-}
-
-function createDeploySmokeApp() {
-  const app = new Hono();
-
-  app.use(
-    "*",
-    cors({
-      origin: process.env.FRONTEND_ORIGIN ?? "http://localhost:3000",
-      credentials: true,
-    }),
-  );
-
-  app.get("/", (c) => {
-    return c.json({
-      name: "HangWat API",
-      mode: "deploy-smoke",
-      endpoints: {
-        docs: "/docs",
-        openapi: "/openapi.json",
-      },
-    });
-  });
-
-  app.route("/", createDocsRoutes());
-
-  return app;
 }
