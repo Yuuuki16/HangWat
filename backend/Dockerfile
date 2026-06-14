@@ -1,11 +1,10 @@
 FROM node:22-alpine AS deps
-WORKDIR /app
+WORKDIR /app/backend
 RUN apk add --no-cache openssl
-RUN corepack enable
-COPY backend/package.json ./backend/package.json
-COPY prisma ./prisma
-RUN cd backend && pnpm install --prod --no-lockfile
-RUN cd backend && pnpm exec prisma generate --schema=../prisma/schema.prisma
+COPY backend/package.json ./package.json
+COPY prisma /app/prisma
+RUN npm install --omit=dev
+RUN npx prisma generate --schema=/app/prisma/schema.prisma
 
 FROM node:22-alpine AS runner
 WORKDIR /app
