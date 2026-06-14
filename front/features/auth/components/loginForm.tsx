@@ -9,7 +9,6 @@ export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -68,17 +67,6 @@ export function LoginForm() {
         onChange={(event) => setPassword(event.target.value)}
       />
 
-      <AuthFormField
-        id="login-username"
-        name="username"
-        type="text"
-        label="ユーザーネーム"
-        placeholder="yamada_taro"
-        autoComplete="username"
-        required
-        value={username}
-        onChange={(event) => setUsername(event.target.value)}
-      />
 
       <div className="flex justify-center pt-4">
         <button
