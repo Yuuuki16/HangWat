@@ -4,7 +4,6 @@ import { Clock3, Heart, MapPin, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { mockCandidateComments } from "@/features/events/data/mockCandidateComments";
 import { getEventDetail } from "@/features/events/data/eventDetailApi";
 import {
   cancelScheduleCandidateConfirmation,
@@ -12,11 +11,13 @@ import {
   deleteScheduleCandidate,
   updateScheduleCandidate,
 } from "@/features/events/data/scheduleCandidateApi";
-import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
 import {
-  loadLikedCommentIds,
-  saveLikedCommentIds,
-} from "@/features/events/utils/commentLikeStorage";
+  likeComment,
+  listComments,
+  postComment,
+  unlikeComment,
+} from "@/features/events/data/commentsApi";
+import type { Comment, ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
 import { getStoredEventMemberId } from "@/features/events/utils/eventMemberStorage";
 import { buildCandidateStartAt } from "@/features/events/utils/scheduleCandidateDateTime";
 import { ApiError } from "@/lib/apiClient";
@@ -47,14 +48,15 @@ export function CandidateThread({
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
   const [isActionPending, setIsActionPending] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [comment, setComment] = useState("");
+  const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editTime, setEditTime] = useState("");
   const [editLocation, setEditLocation] = useState("");
   const [editTimeError, setEditTimeError] = useState("");
-  const [likedCommentIds, setLikedCommentIds] = useState<string[]>([]);
   const editTimeInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -90,7 +92,11 @@ export function CandidateThread({
         setEventDate(detail.event.date);
         setEventCandidates(detail.candidates);
         setCandidate(targetCandidate);
-        setLikedCommentIds(loadLikedCommentIds(eventId, candidateId));
+
+        const loadedComments = await listComments(eventId, candidateId, currentMemberId);
+        if (isMounted) {
+          setComments(loadedComments);
+        }
         setIsLoaded(true);
       } catch (error) {
         if (!isMounted) {
@@ -109,9 +115,19 @@ export function CandidateThread({
     };
   }, [candidateId, eventId]);
 
-  const handleCommentSubmit = (formEvent: FormEvent<HTMLFormElement>) => {
+  const handleCommentSubmit = async (formEvent: FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
-    setComment("");
+    if (!eventMemberId || !comment.trim() || isCommentSubmitting) return;
+    setIsCommentSubmitting(true);
+    try {
+      const newComment = await postComment(eventId, candidateId, eventMemberId, comment.trim());
+      setComments((prev) => [...prev, newComment]);
+      setComment("");
+    } catch (error) {
+      setActionError(getApiErrorMessage(error, "コメントの投稿に失敗しました。"));
+    } finally {
+      setIsCommentSubmitting(false);
+    }
   };
 
   const handleConfirm = async () => {
@@ -181,17 +197,23 @@ export function CandidateThread({
     }
   };
 
-  const toggleCommentLike = (commentId: string) => {
-    if (candidate?.status !== "pending") {
-      return;
+  const toggleCommentLike = async (commentId: string) => {
+    if (!eventMemberId || candidate?.status !== "pending") return;
+    const target = comments.find((c) => c.id === commentId);
+    if (!target) return;
+    try {
+      const fn = target.likedByMe ? unlikeComment : likeComment;
+      const result = await fn(commentId, eventMemberId);
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId
+            ? { ...c, likedByMe: result.likedByMe, likeCount: result.likeCount }
+            : c,
+        ),
+      );
+    } catch {
+      // いいね失敗はサイレント
     }
-
-    const nextLikedCommentIds = likedCommentIds.includes(commentId)
-      ? likedCommentIds.filter((id) => id !== commentId)
-      : [...likedCommentIds, commentId];
-
-    setLikedCommentIds(nextLikedCommentIds);
-    saveLikedCommentIds(eventId, candidateId, nextLikedCommentIds);
   };
 
   const openEditor = () => {
@@ -371,9 +393,9 @@ export function CandidateThread({
       </section>
 
       <section aria-label="コメント一覧" className="mt-8 space-y-4">
-        {mockCandidateComments.map((item) => (
+        {comments.map((item) => (
           <article key={item.id}>
-            <p className="mb-1 text-[11px]">{item.displayName}</p>
+            <p className="mb-1 text-[11px]">{item.authorMember.displayName}</p>
             <div className="grid grid-cols-[32px_minmax(0,1fr)_34px] items-start gap-2">
               <span
                 aria-hidden="true"
@@ -397,8 +419,8 @@ export function CandidateThread({
               {candidate.status === "pending" ? (
                 <button
                   type="button"
-                  aria-label={`${item.displayName}のコメントにいいね`}
-                  aria-pressed={likedCommentIds.includes(item.id)}
+                  aria-label={`${item.authorMember.displayName}のコメントにいいね`}
+                  aria-pressed={item.likedByMe}
                   onClick={() => toggleCommentLike(item.id)}
                   className="flex flex-col items-center rounded-md pt-1 text-xs transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger"
                 >
@@ -407,20 +429,13 @@ export function CandidateThread({
                     size={20}
                     strokeWidth={1.8}
                     className={
-                      likedCommentIds.includes(item.id)
+                      item.likedByMe
                         ? "like-pop fill-danger text-danger"
                         : "text-foreground transition-colors"
                     }
                   />
-                  <span
-                    className={
-                      likedCommentIds.includes(item.id)
-                        ? "text-danger"
-                        : "text-foreground"
-                    }
-                  >
-                    {item.likeCount +
-                      (likedCommentIds.includes(item.id) ? 1 : 0)}
+                  <span className={item.likedByMe ? "text-danger" : "text-foreground"}>
+                    {item.likeCount}
                   </span>
                 </button>
               ) : (
@@ -429,21 +444,10 @@ export function CandidateThread({
                     aria-hidden="true"
                     size={20}
                     strokeWidth={1.8}
-                    className={
-                      likedCommentIds.includes(item.id)
-                        ? "fill-danger text-danger"
-                        : "text-foreground"
-                    }
+                    className={item.likedByMe ? "fill-danger text-danger" : "text-foreground"}
                   />
-                  <span
-                    className={
-                      likedCommentIds.includes(item.id)
-                        ? "text-danger"
-                        : "text-foreground"
-                    }
-                  >
-                    {item.likeCount +
-                      (likedCommentIds.includes(item.id) ? 1 : 0)}
+                  <span className={item.likedByMe ? "text-danger" : "text-foreground"}>
+                    {item.likeCount}
                   </span>
                 </div>
               )}
@@ -466,7 +470,7 @@ export function CandidateThread({
       ) : (
         <form
           onSubmit={handleCommentSubmit}
-          className="mb-4 mt-auto pt-8"
+          className="mb-4 mt-auto flex gap-2 pt-8"
         >
           <label htmlFor="candidate-comment" className="sr-only">
             コメント
@@ -476,8 +480,15 @@ export function CandidateThread({
             value={comment}
             placeholder="テキスト入力"
             onChange={(changeEvent) => setComment(changeEvent.target.value)}
-            className="w-full rounded-[12px] border-2 border-primary bg-white px-4 py-2 text-center text-sm text-foreground outline-none placeholder:text-foreground/55 focus:border-foreground"
+            className="min-w-0 flex-1 rounded-[12px] border-2 border-primary bg-white px-4 py-2 text-center text-sm text-foreground outline-none placeholder:text-foreground/55 focus:border-foreground"
           />
+          <button
+            type="submit"
+            disabled={isCommentSubmitting || !comment.trim()}
+            className="rounded-[10px] bg-primary px-3 py-2 text-sm text-white shadow-md transition-opacity hover:opacity-80 disabled:opacity-50"
+          >
+            送信
+          </button>
         </form>
       )}
 

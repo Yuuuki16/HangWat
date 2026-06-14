@@ -16,3 +16,24 @@ export type ScheduleCandidate = {
   commentCount: number;
   likeCount?: number;
 };
+
+export type Comment = {
+  id: string;
+  candidateId: string;
+  body: string;
+  authorMember: {
+    id: string;
+    displayName: string;
+    memberType: "user" | "guest";
+  };
+  likeCount: number;
+  likedByMe: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CommentLikeState = {
+  commentId: string;
+  likedByMe: boolean;
+  likeCount: number;
+};
