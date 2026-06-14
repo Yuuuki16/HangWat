@@ -7,6 +7,7 @@ import type {
   CommentRecordWithEvent,
   CommentRepository,
 } from "../../domain/repositories/commentRepository.js";
+import type { CommentRealtimeService } from "./commentRealtimeService.js";
 
 export type CommentDto = {
   id: string;
@@ -30,7 +31,10 @@ export type CommentLikeDto = {
 };
 
 export class CommentService {
-  constructor(private readonly commentRepository: CommentRepository) {}
+  constructor(
+    private readonly commentRepository: CommentRepository,
+    private readonly realtimeService?: CommentRealtimeService,
+  ) {}
 
   async listComments(input: {
     eventId: bigint;
@@ -75,7 +79,16 @@ export class CommentService {
       body: input.body.trim(),
     });
 
-    return this.toCommentDto(comment);
+    const dto = this.toCommentDto(comment);
+
+    this.realtimeService?.publish(candidate.id.toString(), {
+      type: "comment.created",
+      eventId: input.eventId.toString(),
+      candidateId: candidate.id.toString(),
+      comment: dto,
+    });
+
+    return dto;
   }
 
   async deleteComment(input: {
@@ -94,6 +107,13 @@ export class CommentService {
     this.assertCanDeleteComment(currentMember, comment);
 
     await this.commentRepository.deleteCommentById(comment.id);
+
+    this.realtimeService?.publish(comment.candidateId.toString(), {
+      type: "comment.deleted",
+      eventId: comment.eventId.toString(),
+      candidateId: comment.candidateId.toString(),
+      commentId: input.commentId.toString(),
+    });
   }
 
   async likeComment(input: {
@@ -118,7 +138,17 @@ export class CommentService {
       throw new ApplicationError("NOT_FOUND", "データが存在しません");
     }
 
-    return this.toCommentLikeDto(likeState);
+    const dto = this.toCommentLikeDto(likeState);
+
+    this.realtimeService?.publish(comment.candidateId.toString(), {
+      type: "comment.like.updated",
+      eventId: comment.eventId.toString(),
+      candidateId: comment.candidateId.toString(),
+      commentId: input.commentId.toString(),
+      likeCount: likeState.likeCount,
+    });
+
+    return dto;
   }
 
   async unlikeComment(input: {
@@ -143,7 +173,17 @@ export class CommentService {
       throw new ApplicationError("NOT_FOUND", "データが存在しません");
     }
 
-    return this.toCommentLikeDto(likeState);
+    const dto = this.toCommentLikeDto(likeState);
+
+    this.realtimeService?.publish(comment.candidateId.toString(), {
+      type: "comment.like.updated",
+      eventId: comment.eventId.toString(),
+      candidateId: comment.candidateId.toString(),
+      commentId: input.commentId.toString(),
+      likeCount: likeState.likeCount,
+    });
+
+    return dto;
   }
 
   private async resolveCurrentMember(currentMemberId: bigint) {
