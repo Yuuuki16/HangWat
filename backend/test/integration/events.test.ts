@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
 
 import { registerAndLogin, registerLoginAndCreateEvent } from "../helpers/auth.js";
-import { createInviteToken } from "../helpers/seed.js";
 import { createTestApp } from "../helpers/testApp.js";
 import { resetTestDb } from "../helpers/testDb.js";
 
@@ -217,22 +216,13 @@ describe("DELETE /api/events/:eventId", () => {
     const app = createTestApp();
     const { eventId, memberId } = await registerLoginAndCreateEvent(app);
 
-    const { inviteToken } = await createInviteToken(app, eventId, memberId);
-    const joinRes = await app.request(
-      `/api/events/${eventId}/join/${inviteToken}`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ displayName: "非オーナー" }),
-      },
-    );
-    assert.equal(joinRes.status, 201);
-    const joinBody = (await joinRes.json()) as { eventMember: { id: string } };
-    const guestMemberId = joinBody.eventMember.id;
+    const { cookie: otherCookie } = await registerAndLogin(app, {
+      email: `other-${crypto.randomUUID()}@example.com`,
+    });
 
     const res = await app.request(`/api/events/${eventId}`, {
       method: "DELETE",
-      headers: { "x-event-member-id": guestMemberId },
+      headers: { cookie: otherCookie },
     });
 
     assert.equal(res.status, 403);
