@@ -18,7 +18,6 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import type { Event } from "@/features/events/types/event";
 import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
 import {
-  loadCandidates,
   saveCandidates,
   sortCandidatesByTime,
 } from "@/features/events/utils/candidateStorage";
@@ -26,14 +25,19 @@ import { formatEventDate } from "@/features/events/utils/formatEventDate";
 
 type EventDetailProps = {
   initialEvent: Event;
+  initialCandidates: ScheduleCandidate[];
 };
 
-export function EventDetail({ initialEvent }: EventDetailProps) {
+export function EventDetail({
+  initialEvent,
+  initialCandidates,
+}: EventDetailProps) {
   const [event, setEvent] = useState(initialEvent);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingCandidate, setIsAddingCandidate] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [candidates, setCandidates] = useState<ScheduleCandidate[]>([]);
+  const [candidates, setCandidates] =
+    useState<ScheduleCandidate[]>(initialCandidates);
   const [copyStatus, setCopyStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
@@ -52,25 +56,12 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
   const editingDate = date ? date.slice(5).replace("-", "/") : "MM/DD";
 
   useEffect(() => {
-    const loadStoredCandidates = () => {
-      setCandidates(loadCandidates(event.id));
-    };
-    const loadTimer = window.setTimeout(loadStoredCandidates, 0);
-
-    const handlePageShow = () => {
-      loadStoredCandidates();
-    };
-
-    window.addEventListener("pageshow", handlePageShow);
-
     return () => {
-      window.clearTimeout(loadTimer);
-      window.removeEventListener("pageshow", handlePageShow);
       if (copyStatusTimerRef.current) {
         clearTimeout(copyStatusTimerRef.current);
       }
     };
-  }, [event.id]);
+  }, []);
 
   const resetCopyStatusLater = () => {
     if (copyStatusTimerRef.current) {

@@ -1,22 +1,132 @@
-import { notFound } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { EventDetail } from "@/features/events/components/eventDetail";
-import { mockEvents } from "@/features/events/data/mockEvents";
+import { getEventDetail } from "@/features/events/data/eventDetailApi";
+import type { Event } from "@/features/events/types/event";
+import type { ScheduleCandidate } from "@/features/events/types/scheduleCandidate";
+import { ApiError } from "@/lib/apiClient";
 
-type EventTimelinePageProps = {
-  params: Promise<{
-    eventid: string;
-  }>;
-};
+type LoadState =
+  | { status: "loading" }
+  | { status: "missing-member" }
+  | { status: "error"; message: string }
+  | {
+      status: "success";
+      event: Event;
+      candidates: ScheduleCandidate[];
+    };
 
-export default async function EventTimelinePage({
-  params,
-}: EventTimelinePageProps) {
-  const { eventid } = await params;
-  const event = mockEvents.find((mockEvent) => mockEvent.id === eventid);
+const eventMemberStorageKeys = (eventId: string) => [
+  `hangwat:event-member-id:${eventId}`,
+  `hangwat:eventMemberId:${eventId}`,
+  "hangwat:event-member-id",
+  "hangwat:eventMemberId",
+];
 
-  if (!event) {
-    notFound();
+const getStoredEventMemberId = (eventId: string) => {
+  for (const key of eventMemberStorageKeys(eventId)) {
+    const value = window.localStorage.getItem(key);
+
+    if (value) {
+      return value;
+    }
   }
 
-  return <EventDetail initialEvent={event} />;
+  return null;
+};
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof ApiError) {
+    if (error.status === 401) {
+      return "ログイン情報を確認できませんでした。もう一度参加リンクから開いてください。";
+    }
+
+    if (error.status === 403) {
+      return "このイベントを見る権限がありません。参加情報を確認してください。";
+    }
+
+    if (error.status === 404) {
+      return "イベントが見つかりませんでした。";
+    }
+  }
+
+  return "イベント情報を読み込めませんでした。時間をおいて再度お試しください。";
+};
+
+export default function EventTimelinePage() {
+  const params = useParams<{ eventid: string }>();
+  const eventId = params.eventid;
+  const [loadState, setLoadState] = useState<LoadState>({ status: "loading" });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadEventDetail = async () => {
+      setLoadState({ status: "loading" });
+
+      const eventMemberId = getStoredEventMemberId(eventId);
+
+      if (!eventMemberId) {
+        if (!isMounted) {
+          return;
+        }
+
+        setLoadState({ status: "missing-member" });
+        return;
+      }
+
+      try {
+        const { event, candidates } = await getEventDetail(eventId, eventMemberId);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setLoadState({ status: "success", event, candidates });
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setLoadState({ status: "error", message: getErrorMessage(error) });
+      }
+    };
+
+    void loadEventDetail();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [eventId]);
+
+  if (loadState.status === "loading") {
+    return <MessageScreen message="イベント情報を読み込んでいます..." />;
+  }
+
+  if (loadState.status === "missing-member") {
+    return (
+      <MessageScreen message="イベント参加情報が見つかりません。参加リンクからもう一度開いてください。" />
+    );
+  }
+
+  if (loadState.status === "error") {
+    return <MessageScreen message={loadState.message} />;
+  }
+
+  return (
+    <EventDetail
+      initialEvent={loadState.event}
+      initialCandidates={loadState.candidates}
+    />
+  );
+}
+
+function MessageScreen({ message }: { message: string }) {
+  return (
+    <main className="flex flex-1 items-center justify-center px-6 text-center">
+      <p className="max-w-sm text-base leading-7">{message}</p>
+    </main>
+  );
 }

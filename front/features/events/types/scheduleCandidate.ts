@@ -1,4 +1,4 @@
-export type ScheduleCandidateStatus = "pending" | "confirmed";
+export type ScheduleCandidateStatus = "pending" | "confirmed" | "cancelled";
 
 export type ScheduleCandidate = {
   id: string;
@@ -7,4 +7,5 @@ export type ScheduleCandidate = {
   location: string;
   status: ScheduleCandidateStatus;
   commentCount: number;
+  likeCount?: number;
 };
