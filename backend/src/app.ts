@@ -76,6 +76,7 @@ export function createApp() {
     new InMemoryCommentRealtimeConnectionRepository();
   const commentRealtimeService = new CommentRealtimeService(
     commentRealtimeConnectionRepository,
+    commentRepository,
   );
   const commentService = new CommentService(
     commentRepository,
@@ -127,7 +128,6 @@ export function createApp() {
     "/",
     createCommentRealtimeRoutes({
       commentRealtimeService,
-      commentRepository,
       upgradeWebSocket,
     }),
   );

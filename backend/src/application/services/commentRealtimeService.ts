@@ -1,13 +1,39 @@
+import type { WebSocket } from "ws";
+
 import type { CommentRealtimeEvent } from "../../domain/entities/commentRealtimeEvent.js";
 import type { CommentRealtimeConnectionRepository } from "../../domain/repositories/commentRealtimeConnectionRepository.js";
+import type { CommentRepository } from "../../domain/repositories/commentRepository.js";
 
 export class CommentRealtimeService {
   constructor(
     private readonly connectionRepository: CommentRealtimeConnectionRepository,
+    private readonly commentRepository: CommentRepository,
   ) {}
 
-  subscribe(candidateId: string, connection: WebSocket): void {
-    this.connectionRepository.addConnection(candidateId, connection);
+  async subscribeIfAuthorized(input: {
+    eventId: bigint;
+    candidateId: bigint;
+    memberId: bigint;
+    connection: WebSocket;
+  }): Promise<{ ok: true; candidateIdStr: string } | { ok: false; reason: string }> {
+    const event = await this.commentRepository.findEventById(input.eventId);
+    if (event === null) {
+      return { ok: false, reason: "Event not found" };
+    }
+
+    const candidate = await this.commentRepository.findCandidateById(input.candidateId);
+    if (candidate === null || candidate.eventId !== event.id) {
+      return { ok: false, reason: "Candidate not found" };
+    }
+
+    const member = await this.commentRepository.findEventMemberById(input.memberId);
+    if (member === null || member.eventId !== event.id) {
+      return { ok: false, reason: "Unauthorized" };
+    }
+
+    const candidateIdStr = input.candidateId.toString();
+    this.connectionRepository.addConnection(candidateIdStr, input.connection);
+    return { ok: true, candidateIdStr };
   }
 
   unsubscribe(candidateId: string, connection: WebSocket): void {

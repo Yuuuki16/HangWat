@@ -110,16 +110,16 @@ URL参加者は `users` には作成せず、`event_members` に作成される�
 
 ```txt
 案A: Cookieのログインセッションを使う
-案B: query params で memberSessionToken を渡す
+案B: query params で memberId（event_member_id）を渡す
 ```
 
 MVPでは実装しやすさを優先して、以下を許容する。
 
 ```txt
-/ws/events/:eventId/candidates/:candidateId?memberSessionToken=xxx
+/ws/events/:eventId/candidates/:candidateId?memberId=<eventMemberId>
 ```
 
-ただし、ログに token が残る可能性があるため、本番運用では Cookie または Authorization header 相当の方式を検討する。
+ただし、`memberId` はクライアントが自由に指定できるため、本番運用では Cookie または署名付きトークンを使い、サーバー側で `memberId` を導出する方式を検討する。
 
 ---
 
@@ -413,7 +413,7 @@ export const createCommentRealtimeRoutes = ({
 
 ```txt
 1. eventId / candidateId を path params から取得
-2. ログインセッションまたは memberSessionToken を検証
+2. query params の memberId（event_member_id）を検証
 3. event_members に対象イベントの参加者として存在するか確認
 4. candidate が eventId に属しているか確認
 5. 接続を candidateId に紐づけて保存
@@ -520,7 +520,7 @@ commentRealtimeService.publish(candidateId, {
 
 ## Frontend 実装方針
 
-## 配置先
+### 配置先
 
 ```txt
 HangWat/front/features/comments/
@@ -620,10 +620,10 @@ export function useCommentRealtime({
 }
 ```
 
-URL参加者の `memberSessionToken` を query params で渡す場合は、URL生成時に追加する。
+`memberId`（event_member_id）を query params で渡す場合は、URL生成時に追加する。
 
 ```ts
-const socketUrl = `${wsBaseUrl}/ws/events/${eventId}/candidates/${candidateId}?memberSessionToken=${encodeURIComponent(token)}`
+const socketUrl = `${wsBaseUrl}/ws/events/${eventId}/candidates/${candidateId}?memberId=${encodeURIComponent(memberId)}`
 ```
 
 ---

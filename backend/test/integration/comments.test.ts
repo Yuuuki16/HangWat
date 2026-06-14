@@ -200,6 +200,7 @@ describe("PUT /api/comments/:commentId/like", () => {
       headers: { "x-event-member-id": memberId },
     });
 
+    assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.likeCount, 1);
   });

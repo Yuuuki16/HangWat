@@ -1,11 +1,24 @@
-import type { CommentDto } from "../../application/services/commentService.js";
+export type CommentPayload = {
+  id: string;
+  candidateId: string;
+  body: string;
+  authorMember: {
+    id: string;
+    displayName: string;
+    memberType: "user" | "guest";
+  };
+  likeCount: number;
+  likedByMe: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type CommentRealtimeEvent =
   | {
       type: "comment.created";
       eventId: string;
       candidateId: string;
-      comment: CommentDto;
+      comment: CommentPayload;
     }
   | {
       type: "comment.deleted";
