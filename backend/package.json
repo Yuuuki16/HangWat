@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "lint": "eslint .",
     "test": "node --import tsx --test test/*.test.ts",
+    "test:integration": "node --env-file .env.test --import tsx --test --test-concurrency=1 test/integration/*.test.ts",
     "prisma": "prisma",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
