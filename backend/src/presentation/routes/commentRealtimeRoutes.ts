@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import type { UpgradeWebSocket } from "hono/ws";
-import type { WebSocket } from "ws";
 
 import type { CommentRealtimeService } from "../../application/services/commentRealtimeService.js";
+import type { RealtimeConnection } from "../../domain/repositories/commentRealtimeConnectionRepository.js";
 
 type Dependencies = {
   commentRealtimeService: CommentRealtimeService;
@@ -53,12 +53,11 @@ export function createCommentRealtimeRoutes({
               eventId,
               candidateId,
               memberId,
-              connection: ws.raw as unknown as WebSocket,
+              connection: ws.raw as unknown as RealtimeConnection,
             });
 
             if (!result.ok) {
-              const code = result.reason === "Unauthorized" ? 1008 : 1008;
-              ws.close(code, result.reason);
+              ws.close(1008, result.reason);
               return;
             }
 
@@ -73,7 +72,7 @@ export function createCommentRealtimeRoutes({
           if (candidateIdStr !== null) {
             commentRealtimeService.unsubscribe(
               candidateIdStr,
-              ws.raw as unknown as WebSocket,
+              ws.raw as unknown as RealtimeConnection,
             );
           }
         },

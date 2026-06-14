@@ -1,21 +1,28 @@
-import { WebSocket } from "ws";
-
 import type { CommentRealtimeEvent } from "../../domain/entities/commentRealtimeEvent.js";
-import type { CommentRealtimeConnectionRepository } from "../../domain/repositories/commentRealtimeConnectionRepository.js";
+import type {
+  CommentRealtimeConnectionRepository,
+  RealtimeConnection,
+} from "../../domain/repositories/commentRealtimeConnectionRepository.js";
+
+const WS_OPEN = 1;
 
 export class InMemoryCommentRealtimeConnectionRepository
   implements CommentRealtimeConnectionRepository
 {
-  private readonly connectionsByCandidateId = new Map<string, Set<WebSocket>>();
+  private readonly connectionsByCandidateId = new Map<
+    string,
+    Set<RealtimeConnection>
+  >();
 
-  addConnection(candidateId: string, connection: WebSocket): void {
+  addConnection(candidateId: string, connection: RealtimeConnection): void {
     const connections =
-      this.connectionsByCandidateId.get(candidateId) ?? new Set<WebSocket>();
+      this.connectionsByCandidateId.get(candidateId) ??
+      new Set<RealtimeConnection>();
     connections.add(connection);
     this.connectionsByCandidateId.set(candidateId, connections);
   }
 
-  removeConnection(candidateId: string, connection: WebSocket): void {
+  removeConnection(candidateId: string, connection: RealtimeConnection): void {
     const connections = this.connectionsByCandidateId.get(candidateId);
     if (!connections) {
       return;
@@ -36,7 +43,7 @@ export class InMemoryCommentRealtimeConnectionRepository
     }
     const message = JSON.stringify(event);
     for (const connection of connections) {
-      if (connection.readyState !== WebSocket.OPEN) {
+      if (connection.readyState !== WS_OPEN) {
         connections.delete(connection);
         continue;
       }

@@ -1,7 +1,8 @@
-import type { WebSocket } from "ws";
-
 import type { CommentRealtimeEvent } from "../../domain/entities/commentRealtimeEvent.js";
-import type { CommentRealtimeConnectionRepository } from "../../domain/repositories/commentRealtimeConnectionRepository.js";
+import type {
+  CommentRealtimeConnectionRepository,
+  RealtimeConnection,
+} from "../../domain/repositories/commentRealtimeConnectionRepository.js";
 import type { CommentRepository } from "../../domain/repositories/commentRepository.js";
 
 export class CommentRealtimeService {
@@ -14,7 +15,7 @@ export class CommentRealtimeService {
     eventId: bigint;
     candidateId: bigint;
     memberId: bigint;
-    connection: WebSocket;
+    connection: RealtimeConnection;
   }): Promise<{ ok: true; candidateIdStr: string } | { ok: false; reason: string }> {
     const event = await this.commentRepository.findEventById(input.eventId);
     if (event === null) {
@@ -36,7 +37,7 @@ export class CommentRealtimeService {
     return { ok: true, candidateIdStr };
   }
 
-  unsubscribe(candidateId: string, connection: WebSocket): void {
+  unsubscribe(candidateId: string, connection: RealtimeConnection): void {
     this.connectionRepository.removeConnection(candidateId, connection);
   }
 
