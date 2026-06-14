@@ -5,15 +5,51 @@ import { useState, type FormEvent } from "react";
 import { EventFormInput } from "@/features/events/components/eventFormInput";
 import { EventFormSubmitButton } from "@/features/events/components/eventFormSubmitButton";
 import { createEvent } from "@/features/events/services/eventApi";
+import {
+  resolveGoogleMapsUrl,
+  type ResolvedLocation,
+} from "@/features/events/services/locationApi";
 
 export function EventCreateForm() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
-  const [location, setLocation] = useState("");
+  const [locationUrl, setLocationUrl] = useState("");
+  const [resolvedLocation, setResolvedLocation] =
+    useState<ResolvedLocation | null>(null);
+  const [isResolving, setIsResolving] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [detail, setDetail] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function handleLocationUrlChange(value: string) {
+    setLocationUrl(value);
+    setResolvedLocation(null);
+    setLocationError(null);
+  }
+
+  async function handleResolveLocation() {
+    const trimmedUrl = locationUrl.trim();
+    if (trimmedUrl === "" || isResolving) {
+      return;
+    }
+
+    setLocationError(null);
+    setIsResolving(true);
+
+    try {
+      const result = await resolveGoogleMapsUrl(trimmedUrl);
+      if (result.ok) {
+        setResolvedLocation(result.data.location);
+      } else {
+        setResolvedLocation(null);
+        setLocationError(result.message);
+      }
+    } finally {
+      setIsResolving(false);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,24 +60,13 @@ export function EventCreateForm() {
     setErrorMessage(null);
     setIsSubmitting(true);
 
-    const trimmedLocation = location.trim();
     const trimmedDetail = detail.trim();
 
     try {
       const result = await createEvent({
         title: title.trim(),
         date: date === "" ? null : date,
-        location:
-          trimmedLocation === ""
-            ? null
-            : {
-                name: trimmedLocation,
-                address: null,
-                googlePlaceId: null,
-                latitude: null,
-                longitude: null,
-                googleMapsUrl: null,
-              },
+        location: resolvedLocation,
         description: trimmedDetail === "" ? null : trimmedDetail,
       });
 
@@ -100,14 +125,40 @@ export function EventCreateForm() {
         <label htmlFor="event-location" className="text-lg text-primary">
           場所(任意)
         </label>
-        <EventFormInput
-          id="event-location"
-          name="location"
-          type="text"
-          value={location}
-          onChange={(event) => setLocation(event.target.value)}
-          placeholder="ここに入力"
-        />
+        <div className="flex gap-2">
+          <EventFormInput
+            id="event-location"
+            name="location"
+            type="url"
+            value={locationUrl}
+            onChange={(event) => handleLocationUrlChange(event.target.value)}
+            placeholder="Google Maps の URL を貼り付け"
+            className="flex-1"
+          />
+          <button
+            type="button"
+            onClick={handleResolveLocation}
+            disabled={isResolving || locationUrl.trim() === ""}
+            className="shrink-0 rounded-base bg-primary px-4 py-2 text-sm text-white shadow-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isResolving ? "取得中..." : "場所を取得"}
+          </button>
+        </div>
+        {locationError && (
+          <p role="alert" className="text-sm text-red-700">
+            {locationError}
+          </p>
+        )}
+        {resolvedLocation && (
+          <div className="rounded-base border-2 border-primary/40 bg-primary/5 px-3 py-2 text-sm">
+            <p className="font-medium text-foreground">
+              {resolvedLocation.name}
+            </p>
+            {resolvedLocation.address && (
+              <p className="text-foreground/70">{resolvedLocation.address}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
