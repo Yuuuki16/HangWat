@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AuthFormField } from "@/features/auth/components/authFormField";
-import { registerUser } from "@/features/auth/services/authApi";
+import { loginUser, registerUser } from "@/features/auth/services/authApi";
 
 export function SignupForm() {
   const router = useRouter();
@@ -24,13 +24,20 @@ export function SignupForm() {
 
     const result = await registerUser({ name: username, email, password });
 
-    if (result.ok) {
-      router.push("/sign-in");
+    if (!result.ok) {
+      setErrorMessage(result.message);
+      setIsSubmitting(false);
       return;
     }
 
-    setErrorMessage(result.message);
-    setIsSubmitting(false);
+    const loginResult = await loginUser({ email, password });
+
+    if (loginResult.ok) {
+      router.push("/home");
+      return;
+    }
+
+    router.push("/sign-in");
   }
 
   return (
