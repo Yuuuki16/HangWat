@@ -43,7 +43,7 @@ deploy_backend() {
     --min-instances=0 \
     --max-instances=3 \
     --add-cloudsql-instances="$INSTANCE_CONNECTION_NAME" \
-    --set-secrets="DATABASE_URL=DATABASE_URL:latest,SESSION_SECRET=SESSION_SECRET:latest" \
+    --set-secrets="DATABASE_URL=DATABASE_URL:latest,SESSION_SECRET=SESSION_SECRET:latest,GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest" \
     --set-env-vars="NODE_ENV=production" \
     --project="$PROJECT_ID"
 
