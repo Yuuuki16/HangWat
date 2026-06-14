@@ -12,7 +12,8 @@
     "test:integration": "node --env-file .env.test --import tsx --test --test-concurrency=1 test/integration/*.test.ts",
     "prisma": "prisma",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",
