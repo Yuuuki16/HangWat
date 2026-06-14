@@ -63,9 +63,9 @@ export function createAuthRoutes(
 
       await setSignedCookie(c, sessionCookieName, user.id, sessionSecret, {
         httpOnly: true,
-        sameSite: "Lax",
+        sameSite: "None",
         path: "/",
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         maxAge: sessionCookieMaxAgeSeconds,
       });
 
