@@ -99,7 +99,11 @@ export async function getEventDetail(
   return {
     event: toEvent(response.event),
     candidates: response.candidates
-      .map(toScheduleCandidate)
-      .sort((left, right) => left.time.localeCompare(right.time)),
+      .slice()
+      .sort(
+        (left, right) =>
+          new Date(left.startAt).getTime() - new Date(right.startAt).getTime(),
+      )
+      .map(toScheduleCandidate),
   };
 }

@@ -70,21 +70,24 @@ const getErrorCode = (body: unknown) => {
   return errorBody.error?.code ?? errorBody.code;
 };
 
+const isJsonBody = (body: unknown): body is Record<string, unknown> =>
+  Object.prototype.toString.call(body) === "[object Object]";
+
 export async function apiClient<TResponse>(
   path: string,
   options: ApiClientOptions = {},
 ): Promise<TResponse> {
   const headers = new Headers(options.headers);
-  let body = options.body;
+  let body: BodyInit | undefined;
 
-  if (
-    body &&
-    !(body instanceof FormData) &&
-    !(body instanceof Blob) &&
-    typeof body !== "string"
-  ) {
-    headers.set("content-type", "application/json");
-    body = JSON.stringify(body);
+  if (isJsonBody(options.body)) {
+    if (!headers.has("content-type")) {
+      headers.set("content-type", "application/json");
+    }
+
+    body = JSON.stringify(options.body);
+  } else {
+    body = options.body;
   }
 
   const response = await fetch(buildApiUrl(path), {
