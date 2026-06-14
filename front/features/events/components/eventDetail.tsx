@@ -26,14 +26,32 @@ import { formatEventDate } from "@/features/events/utils/formatEventDate";
 
 type EventDetailProps = {
   initialEvent: Event;
+  initialCandidates: ScheduleCandidate[];
 };
 
-export function EventDetail({ initialEvent }: EventDetailProps) {
+const mergeCandidates = (
+  apiCandidates: ScheduleCandidate[],
+  storedCandidates: ScheduleCandidate[],
+) =>
+  sortCandidatesByTime([
+    ...new Map(
+      [...storedCandidates, ...apiCandidates].map((candidate) => [
+        candidate.id,
+        candidate,
+      ]),
+    ).values(),
+  ]);
+
+export function EventDetail({
+  initialEvent,
+  initialCandidates,
+}: EventDetailProps) {
   const [event, setEvent] = useState(initialEvent);
   const [isEditing, setIsEditing] = useState(false);
   const [isAddingCandidate, setIsAddingCandidate] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [candidates, setCandidates] = useState<ScheduleCandidate[]>([]);
+  const [candidates, setCandidates] =
+    useState<ScheduleCandidate[]>(initialCandidates);
   const [copyStatus, setCopyStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
@@ -53,7 +71,7 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
 
   useEffect(() => {
     const loadStoredCandidates = () => {
-      setCandidates(loadCandidates(event.id));
+      setCandidates(mergeCandidates(initialCandidates, loadCandidates(event.id)));
     };
     const loadTimer = window.setTimeout(loadStoredCandidates, 0);
 
@@ -70,7 +88,7 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
         clearTimeout(copyStatusTimerRef.current);
       }
     };
-  }, [event.id]);
+  }, [event.id, initialCandidates]);
 
   const resetCopyStatusLater = () => {
     if (copyStatusTimerRef.current) {
@@ -277,11 +295,15 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
                       aria-label={
                         candidate.status === "confirmed"
                           ? "予定確定済み"
+                          : candidate.status === "cancelled"
+                            ? "予定取り消し済み"
                           : "分岐地点"
                       }
                       className={`z-10 ml-0.5 mt-[14px] h-9 w-9 rounded-full border-[3px] border-graph-green ${
                         candidate.status === "confirmed"
                           ? "bg-graph-green shadow-[inset_0_0_0_5px_var(--background)]"
+                          : candidate.status === "cancelled"
+                            ? "border-[#a9a9a9] bg-zinc-100"
                           : "border-dotted bg-background"
                       }`}
                     />
@@ -297,9 +319,23 @@ export function EventDetail({ initialEvent }: EventDetailProps) {
                         />
                       </>
                     )}
+                    {candidate.status === "cancelled" && (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="mx-2 mt-[31px] h-0 border-t-[3px] border-dashed border-[#a9a9a9]"
+                        />
+                        <span
+                          aria-label="取り消し済み"
+                          className="z-10 mt-5 h-6 w-6 rounded-full border-[3px] border-[#a9a9a9] bg-zinc-100"
+                        />
+                      </>
+                    )}
                     <Link
                       href={`/events/${event.id}/slots/${candidate.id}`}
-                      className="col-start-4 ml-3 block rounded-[28px] border-2 border-foreground bg-white px-5 py-3 transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      className={`col-start-4 ml-3 block rounded-[28px] border-2 border-foreground bg-white px-5 py-3 transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                        candidate.status === "cancelled" ? "opacity-65" : ""
+                      }`}
                     >
                       <p className="truncate text-sm">{candidate.title}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
