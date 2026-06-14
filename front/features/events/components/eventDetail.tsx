@@ -35,7 +35,7 @@ const mergeCandidates = (
 ) =>
   sortCandidatesByTime([
     ...new Map(
-      [...apiCandidates, ...storedCandidates].map((candidate) => [
+      [...storedCandidates, ...apiCandidates].map((candidate) => [
         candidate.id,
         candidate,
       ]),
