@@ -77,7 +77,7 @@ deploy_front() {
     -f "$REPO_ROOT/front/Dockerfile" \
     --build-arg "NEXT_PUBLIC_API_URL=${BACKEND_URL}" \
     -t "${IMAGE_BASE}/front:latest" \
-    "$REPO_ROOT/front"
+    "$REPO_ROOT"
 
   docker push "${IMAGE_BASE}/front:latest"
 
